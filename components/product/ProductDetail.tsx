@@ -8,6 +8,7 @@ import { getCategory } from "@/data/categories";
 import { site } from "@/data/site";
 import { firstAvailableVariant, isSoldOut } from "@/lib/catalog";
 import { cn, formatPrice } from "@/lib/format";
+import { unitsForSku } from "@/lib/gift";
 import { buildProductMessage, whatsappUrl } from "@/lib/whatsapp";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState, SearchIllustration } from "@/components/ui/EmptyState";
@@ -33,7 +34,7 @@ function InfoAccordion({ title, icon, children, defaultOpen = false }: { title: 
 }
 
 export function ProductDetail({ slug }: { slug: string }) {
-  const { hydrated, getProductBySlug, storeProducts, addToCart, isFavorite, toggleFavorite, cart } = useStore();
+  const { hydrated, getProductBySlug, storeProducts, addToCart, isFavorite, toggleFavorite, cart, themes, activePackaging } = useStore();
   const { showToast } = useToast();
   const product = getProductBySlug(slug);
 
@@ -90,7 +91,8 @@ export function ProductDetail({ slug }: { slug: string }) {
   const category = getCategory(product.categoryId);
   const variant = product.variants.find((v) => v.sku === sku);
   const stock = variant?.stock ?? 0;
-  const inCart = cart.find((i) => i.productId === product.id && i.sku === sku)?.quantity ?? 0;
+  const inCart = sku ? unitsForSku(cart, sku) : 0;
+  const productThemes = themes.filter((t) => t.active && product.themeIds?.includes(t.id));
   const maxAddable = Math.max(0, stock - inCart);
   const soldOutAll = isSoldOut(product);
   const favorite = isFavorite(product.id);
@@ -198,6 +200,16 @@ export function ProductDetail({ slug }: { slug: string }) {
                 </button>
               </div>
 
+              {product.giftEnabled ? (
+                <Link href={`/regalo?producto=${product.slug}`} className="btn btn-secondary w-full">
+                  <Gift size={18} /> Armar como regalo
+                </Link>
+              ) : (
+                <p className="rounded-2xl bg-ivory px-4 py-3 text-center text-[12.5px] text-muted">
+                  Esta joya aún no admite personalización de regalo; puedes dejar una nota en el carrito.
+                </p>
+              )}
+
               <a
                 href={whatsappUrl(buildProductMessage(product, variant, qty))}
                 target="_blank"
@@ -211,13 +223,39 @@ export function ProductDetail({ slug }: { slug: string }) {
               </p>
             </div>
 
+            {(product.meaning || productThemes.length > 0) && (
+              <section aria-labelledby="meaning-title" className="mt-8 rounded-3xl bg-blush-soft/70 p-5 sm:p-6">
+                <h2 id="meaning-title" className="font-serif text-[1.4rem] font-semibold text-ink">El significado de tu joya</h2>
+                {productThemes.length > 0 && (
+                  <p className="mt-2 flex flex-wrap gap-2">
+                    {productThemes.map((t) => (
+                      <Link key={t.id} href={`/catalogo?tema=${t.id}`} className="rounded-full bg-white px-3 py-1 text-[12px] font-semibold text-rose-deep hover:bg-blush">
+                        {t.name}
+                      </Link>
+                    ))}
+                  </p>
+                )}
+                <p className="mt-3 text-[14px] leading-relaxed text-ink">
+                  {product.meaning || productThemes.map((t) => t.description).filter(Boolean).join(" ")}
+                </p>
+                <p className="mt-2 text-[12px] text-muted">Significado simbólico y cultural; no es una promesa de protección ni de otros efectos.</p>
+              </section>
+            )}
+
             <div className="mt-8">
               <InfoAccordion title="Cuidados" icon={<Heart size={17} />} defaultOpen>
                 {product.care ??
                   "Evita el contacto con agua, perfumes y cremas. Guárdala seca en su bolsita cuando no la uses. (Texto de muestra.)"}
               </InfoAccordion>
               <InfoAccordion title="Empaque y regalo" icon={<Gift size={17} />}>
-                Texto de muestra: cada pieza se entrega en bolsita de tela. Puedes dejar una dedicatoria desde el carrito; la disponibilidad de tarjetas se confirma por WhatsApp.
+                {product.giftEnabled && activePackaging.length > 0 ? (
+                  <>
+                    Opciones de empaque: {activePackaging.map((o) => `${o.name}${o.price > 0 ? ` (+${formatPrice(o.price)})` : ""}`).join(", ")}.{" "}
+                    <Link href={`/regalo?producto=${product.slug}`} className="link-underline text-rose-deep">Arma tu regalo</Link>.
+                  </>
+                ) : (
+                  "Puedes dejar una dedicatoria desde el carrito; la disponibilidad de empaques y tarjetas se confirma por WhatsApp."
+                )}
               </InfoAccordion>
               <InfoAccordion title="Entrega" icon={<Truck size={17} />}>
                 Texto de muestra: envíos a todo el Perú. El costo, la empresa de envío y el plazo se coordinan por WhatsApp según tu ciudad. No se garantizan tiempos hasta que la tienda los confirme.

@@ -18,12 +18,27 @@ export function buildOrderMessage(lines: CartLine[], giftNote?: string): string 
   const body = valid
     .map((l, i) => {
       const variant = l.product.variantName ? ` (${l.product.variantName}: ${l.variant.label})` : "";
-      return `${i + 1}. ${l.product.name}${variant}\n   ${l.item.quantity} x ${formatPrice(l.unitPrice)} = ${formatPrice(l.lineTotal)}\n   SKU: ${l.variant.sku}`;
+      const gift = l.item.gift;
+      const unit = l.unitPrice + (l.packaging?.price ?? 0);
+      const lines = [
+        `${i + 1}. ${gift ? "REGALO · " : ""}${l.product.name}${variant}`,
+        `   ${l.item.quantity} x ${formatPrice(unit)} = ${formatPrice(l.lineTotal)}`,
+        `   SKU: ${l.variant.sku}`,
+      ];
+      if (gift) {
+        if (gift.occasion) lines.push(`   Ocasión: ${gift.occasion}`);
+        if (l.packaging) {
+          lines.push(`   Empaque: ${l.packaging.name}${l.packaging.price > 0 ? ` (+${formatPrice(l.packaging.price)} c/u)` : ""}`);
+        }
+        if (gift.dedication.trim()) lines.push(`   Dedicatoria: "${gift.dedication.trim()}"`);
+        if (gift.meaningCard) lines.push("   Incluir tarjeta «El significado de tu joya»");
+      }
+      return lines.join("\n");
     })
     .join("\n");
 
   const parts = [
-    "Hola, MariArte. Me gustaría consultar este pedido:",
+    "Hola, MariArte. Quisiera solicitar este pedido (queda pendiente de tu confirmación):",
     "",
     body,
     "",

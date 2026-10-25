@@ -1,5 +1,6 @@
 "use client";
 
+import { useStore } from "@/context/StoreContext";
 import { categories } from "@/data/categories";
 import { materialTypes, priceRanges, type CatalogFilters, type PriceRange } from "@/lib/catalog";
 import { cn } from "@/lib/format";
@@ -46,9 +47,25 @@ export function FilterPanel({
   className?: string;
 }) {
   const set = (patch: Partial<CatalogFilters>) => onChange({ ...filters, ...patch });
+  const { activeThemes } = useStore();
 
   return (
     <div className={cn("space-y-8", className)}>
+      {activeThemes.length > 0 && (
+        <fieldset>
+          <legend className="eyebrow mb-3">Significado</legend>
+          {activeThemes.map((t) => (
+            <CheckRow
+              key={t.id}
+              label={t.name}
+              count={counts[`tema:${t.id}`] ?? 0}
+              checked={filters.themes.includes(t.id)}
+              onChange={() => set({ themes: toggle<string>(filters.themes, t.id) })}
+            />
+          ))}
+        </fieldset>
+      )}
+
       <fieldset>
         <legend className="eyebrow mb-3">Categoría</legend>
         {categories.map((c) => (

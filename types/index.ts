@@ -38,12 +38,46 @@ export interface Product {
   /** Fecha ISO usada para ordenar por novedades. */
   createdAt: string;
   care?: string;
+  /** Permite personalizar la joya como regalo (empaque, ocasión, dedicatoria). */
+  giftEnabled?: boolean;
+  /** Significado simbólico propio de la joya (texto editable por la administración). */
+  meaning?: string;
+  /** Temas de «Joyas con significado» a los que pertenece. */
+  themeIds?: string[];
+}
+
+export interface MeaningTheme {
+  id: string;
+  name: string;
+  description: string;
+  active: boolean;
+  sortOrder: number;
+}
+
+export interface PackagingOption {
+  id: string;
+  name: string;
+  description: string;
+  /** Costo adicional por regalo, en soles. 0 = sin cargo. */
+  price: number;
+  active: boolean;
+  sortOrder: number;
+}
+
+/** Personalización de regalo elegida para una línea del carrito/pedido. */
+export interface GiftOptions {
+  occasion: string;
+  packagingId?: string;
+  dedication: string;
+  meaningCard: boolean;
 }
 
 export interface CartItem {
   productId: string;
   sku: string;
   quantity: number;
+  /** Si existe, esta línea es un regalo personalizado y no se mezcla con la misma joya sin personalizar. */
+  gift?: GiftOptions;
 }
 
 export interface CartLine {
@@ -52,6 +86,8 @@ export interface CartLine {
   variant: ProductVariant;
   unitPrice: number;
   lineTotal: number;
+  /** Empaque elegido (si aún está disponible). */
+  packaging?: PackagingOption;
   /** Mensaje cuando el stock ya no alcanza o el producto se desactivó. */
   issue?: string;
 }
@@ -70,6 +106,12 @@ export interface OrderItem {
   variantLabel: string;
   quantity: number;
   unitPrice: number;
+  /** Personalización guardada al crear el pedido. */
+  occasion?: string;
+  packagingName?: string;
+  packagingPrice?: number;
+  dedication?: string;
+  meaningCard?: boolean;
 }
 
 export interface Order {

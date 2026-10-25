@@ -6,7 +6,7 @@ import { useToast } from "@/context/ToastContext";
 import { formatPrice } from "@/lib/format";
 import type { CartLine } from "@/types";
 import { QuantitySelector } from "@/components/product/QuantitySelector";
-import { AlertCircle, Trash } from "@/components/ui/icons";
+import { AlertCircle, Gift, Trash } from "@/components/ui/icons";
 import { ProductImage } from "@/components/ui/ProductImage";
 
 export function CartItem({ line }: { line: CartLine }) {
@@ -34,12 +34,25 @@ export function CartItem({ line }: { line: CartLine }) {
                 {product.variantName}: <span className="font-medium text-ink">{variant.label}</span>
               </p>
             )}
-            <p className="mt-0.5 text-[13px] text-muted">{formatPrice(line.unitPrice)} c/u</p>
+              <p className="mt-0.5 text-[13px] text-muted">
+                {formatPrice(line.unitPrice + (line.packaging?.price ?? 0))} c/u
+                {line.packaging && line.packaging.price > 0 && <span> (incluye empaque {formatPrice(line.packaging.price)})</span>}
+              </p>
+              {item.gift && (
+                <div className="mt-2 rounded-xl bg-blush-soft/70 px-3 py-2 text-[12.5px] leading-snug text-ink">
+                  <p className="flex items-center gap-1.5 font-semibold text-rose-deep">
+                    <Gift size={14} /> Regalo personalizado{item.gift.occasion ? ` · ${item.gift.occasion}` : ""}
+                  </p>
+                  {line.packaging && <p className="text-muted">Empaque: {line.packaging.name}</p>}
+                  {item.gift.dedication.trim() && <p className="mt-0.5 italic text-muted">«{item.gift.dedication.trim()}»</p>}
+                  {item.gift.meaningCard && <p className="text-muted">Incluye tarjeta «El significado de tu joya»</p>}
+                </div>
+              )}
           </div>
           <button
             type="button"
             onClick={() => {
-              removeFromCart(product.id, variant.sku);
+              removeFromCart(product.id, variant.sku, item.gift);
               showToast(`${product.name} se quitó del carrito.`, { tone: "info" });
             }}
             className="icon-btn -mr-2 -mt-2 text-muted hover:text-danger"
@@ -60,7 +73,7 @@ export function CartItem({ line }: { line: CartLine }) {
             size="sm"
             value={item.quantity}
             max={Math.max(1, variant.stock)}
-            onChange={(q) => updateQuantity(product.id, variant.sku, q)}
+            onChange={(q) => updateQuantity(product.id, variant.sku, q, item.gift)}
             label={`Cantidad de ${product.name}`}
             disabled={!product.active || variant.stock === 0}
           />

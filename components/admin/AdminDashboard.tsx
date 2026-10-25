@@ -11,6 +11,7 @@ import { AlertCircle, ClipboardList, Info, Menu, Package, RotateCcw, Sparkles } 
 import { Skeleton } from "@/components/ui/misc";
 import { AdminLogin } from "./AdminLogin";
 import { AdminSidebar,adminSections, type AdminSection } from "./AdminSidebar";
+import { PackagingPanel, ThemesPanel } from "./GiftAdminPanels";
 import { InventoryPanel } from "./InventoryPanel";
 import { OrdersTable, orderStatuses, orderTotal } from "./OrdersTable";
 import { ProductsTable } from "./ProductsTable";
@@ -173,6 +174,10 @@ export function AdminDashboard() {
               )}
 
               {section === "inventario" && <InventoryPanel />}
+
+              {section === "empaques" && <PackagingPanel />}
+
+              {section === "significados" && <ThemesPanel />}
             </>
           )}
         </main>

@@ -18,7 +18,7 @@ export const statusTone: Record<OrderStatus, BadgeTone> = {
 };
 
 export function orderTotal(order: Order): number {
-  return order.items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
+  return order.items.reduce((sum, i) => sum + i.quantity * (i.unitPrice + (i.packagingPrice ?? 0)), 0);
 }
 
 export function OrdersTable({ orders, compact = false }: { orders: Order[]; compact?: boolean }) {
@@ -56,10 +56,22 @@ export function OrdersTable({ orders, compact = false }: { orders: Order[]; comp
               </td>
               {!compact && (
                 <td className="px-4 py-3.5 text-[12.5px] text-muted">
-                  {order.items.map((i) => (
-                    <p key={`${i.productId}-${i.variantLabel}`}>
-                      {i.quantity}× {i.productName} · {i.variantLabel}
-                    </p>
+                  {order.items.map((i, idx) => (
+                    <div key={`${i.productId}-${i.variantLabel}-${idx}`} className="mb-1.5 last:mb-0">
+                      <p>
+                        {i.quantity}× {i.productName} · {i.variantLabel}
+                        {i.occasion || i.packagingName || i.dedication ? <span className="ml-1 font-semibold text-rose-deep">· Regalo</span> : null}
+                      </p>
+                      {i.occasion && <p className="pl-3">Ocasión: {i.occasion}</p>}
+                      {i.packagingName && (
+                        <p className="pl-3">
+                          Empaque: {i.packagingName}
+                          {i.packagingPrice ? ` (+S/ ${i.packagingPrice.toFixed(2)})` : ""}
+                        </p>
+                      )}
+                      {i.dedication && <p className="pl-3 italic">Dedicatoria: «{i.dedication}»</p>}
+                      {i.meaningCard && <p className="pl-3">Con tarjeta de significado</p>}
+                    </div>
                   ))}
                 </td>
               )}

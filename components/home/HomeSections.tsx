@@ -65,8 +65,11 @@ export function GiftSection() {
               ))}
             </ul>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <Link href="/catalogo?categoria=regalos" className="btn btn-primary">
-                <Gift size={17} /> Ver regalos
+              <Link href="/regalo" className="btn btn-primary">
+                <Gift size={17} /> Arma tu regalo
+              </Link>
+              <Link href="/catalogo?categoria=regalos" className="btn btn-secondary">
+                Ver regalos
               </Link>
               <Link href="/catalogo?categoria=sets" className="btn btn-secondary">
                 Ver sets

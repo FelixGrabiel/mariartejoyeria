@@ -23,6 +23,7 @@ export const navLinks = [
   { href: "/", label: "Inicio" },
   { href: "/catalogo", label: "Catálogo" },
   { href: "/catalogo?categoria=regalos", label: "Regalos" },
+  { href: "/regalo", label: "Arma tu regalo" },
   { href: "/nosotros", label: "Nosotros" },
   { href: "/contacto", label: "Contacto" },
 ] as const;

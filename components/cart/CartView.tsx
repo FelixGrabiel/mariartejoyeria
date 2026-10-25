@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useStore } from "@/context/StoreContext";
+import { giftKey } from "@/lib/gift";
 import { ArrowLeft, PenLine } from "@/components/ui/icons";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ConfirmModal } from "@/components/ui/Modal";
@@ -63,7 +64,7 @@ export function CartView() {
         <div>
           <ul className="divide-y divide-line border-y border-line">
             {cartLines.map((line) => (
-              <CartItem key={`${line.product.id}-${line.variant.sku}`} line={line} />
+              <CartItem key={`${line.product.id}-${line.variant.sku}-${giftKey(line.item.gift)}`} line={line} />
             ))}
           </ul>
 

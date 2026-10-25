@@ -23,17 +23,35 @@ import { initialProducts } from "@/data/products";
 import { todayISO } from "@/lib/format";
 import {
   checkIsAdmin,
+  dbDeletePackaging,
   dbDeleteProduct,
+  dbDeleteTheme,
+  dbSaveDedicationMax,
+  dbSavePackaging,
   dbSaveProduct,
+  dbSaveTheme,
   dbSetProductActive,
   dbSetStock,
   dbUpdateOrderStatus,
   fetchAdminData,
   fetchCatalog,
+  fetchStoreConfig,
   supabase,
 } from "@/lib/supabase";
 import { STORAGE_KEYS, readStorage, removeStorage, writeStorage } from "@/lib/storage";
-import type { CartItem, CartLine, Order, OrderStatus, Product, StockMovement, StockMovementType } from "@/types";
+import { DEFAULT_DEDICATION_MAX, sameLine, unitsForSku } from "@/lib/gift";
+import type {
+  CartItem,
+  CartLine,
+  GiftOptions,
+  MeaningTheme,
+  Order,
+  OrderStatus,
+  PackagingOption,
+  Product,
+  StockMovement,
+  StockMovementType,
+} from "@/types";
 import { useToast } from "./ToastContext";
 
 interface ActionResult {
@@ -53,9 +71,21 @@ interface StoreContextValue {
   cartLines: CartLine[];
   cartCount: number;
   cartSubtotal: number;
-  addToCart: (productId: string, sku: string, quantity: number) => ActionResult;
-  updateQuantity: (productId: string, sku: string, quantity: number) => void;
-  removeFromCart: (productId: string, sku: string) => void;
+  addToCart: (productId: string, sku: string, quantity: number, gift?: GiftOptions) => ActionResult;
+  updateQuantity: (productId: string, sku: string, quantity: number, gift?: GiftOptions) => void;
+  removeFromCart: (productId: string, sku: string, gift?: GiftOptions) => void;
+
+  /** Empaques y temas: con sesión de administrador incluyen los inactivos. */
+  packaging: PackagingOption[];
+  themes: MeaningTheme[];
+  activePackaging: PackagingOption[];
+  activeThemes: MeaningTheme[];
+  dedicationMax: number;
+  savePackaging: (option: PackagingOption) => void;
+  deletePackaging: (id: string) => void;
+  saveTheme: (theme: MeaningTheme) => void;
+  deleteTheme: (id: string) => void;
+  saveDedicationMax: (value: number) => void;
   clearCart: () => void;
   giftNote: string;
   setGiftNote: (note: string) => void;
@@ -101,6 +131,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminEmail, setAdminEmail] = useState<string | null>(null);
   const authRequired = !!supabase;
+  const [packaging, setPackaging] = useState<PackagingOption[]>([]);
+  const [themes, setThemes] = useState<MeaningTheme[]>([]);
+  const [dedicationMax, setDedicationMax] = useState(DEFAULT_DEDICATION_MAX);
+  const [configLoaded, setConfigLoaded] = useState(!supabase);
+
+  const loadConfig = useCallback(async () => {
+    const config = await fetchStoreConfig();
+    if (!config) return;
+    setPackaging(config.packaging);
+    setThemes(config.themes);
+    setDedicationMax(config.dedicationMax);
+    setConfigLoaded(true);
+  }, []);
 
   // Carga inicial desde localStorage (solo en el navegador).
   useEffect(() => {
@@ -115,7 +158,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     fetchCatalog().then((remote) => {
       if (remote && remote.length) setProducts(remote);
     });
-  }, []);
+    loadConfig();
+  }, [loadConfig]);
 
   // Sesión de administrador: al iniciar sesión se cargan productos (incluye ocultos), pedidos y movimientos de la base.
   const loadAdminData = useCallback(async () => {
@@ -127,7 +171,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setProducts(data.products);
     setOrders(data.orders);
     setMovements(data.movements);
-  }, [showToast]);
+    loadConfig();
+  }, [showToast, loadConfig]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -171,7 +216,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (remote) setProducts(remote);
     setOrders(initialOrders);
     setMovements(initialMovements);
-  }, []);
+    loadConfig();
+  }, [loadConfig]);
 
   // Ejecuta una escritura en la base; si falla, avisa y recarga el estado real.
   const persist = useCallback(
@@ -230,21 +276,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const product = products.find((p) => p.id === item.productId);
       const variant = product?.variants.find((v) => v.sku === item.sku);
       if (!product || !variant) continue;
+      const pack = item.gift?.packagingId ? packaging.find((o) => o.id === item.gift?.packagingId && o.active) : undefined;
+      const packUnit = pack?.price ?? 0;
+      const totalUnits = unitsForSku(cart, item.sku);
       let issue: string | undefined;
       if (!product.active) issue = "Esta joya ya no está disponible en la tienda.";
       else if (variant.stock === 0) issue = "Esta opción se agotó.";
-      else if (item.quantity > variant.stock) issue = `Solo quedan ${variant.stock} unidad(es). Ajusta la cantidad.`;
+      else if (totalUnits > variant.stock) issue = `Solo quedan ${variant.stock} unidad(es) de esta opción en total. Ajusta las cantidades.`;
+      else if (item.gift && !product.giftEnabled) issue = "Esta joya ya no admite personalización de regalo.";
+      else if (item.gift?.packagingId && configLoaded && !pack) issue = "El empaque elegido ya no está disponible. Quita la línea y vuelve a armar el regalo.";
       lines.push({
         item,
         product,
         variant,
         unitPrice: product.price,
-        lineTotal: product.price * item.quantity,
+        lineTotal: (product.price + packUnit) * item.quantity,
+        packaging: pack,
         issue,
       });
     }
     return lines;
-  }, [cart, products]);
+  }, [cart, products, packaging, configLoaded]);
 
   const cartCount = useMemo(() => cart.reduce((sum, i) => sum + i.quantity, 0), [cart]);
   const cartSubtotal = useMemo(
@@ -253,7 +305,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const addToCart = useCallback(
-    (productId: string, sku: string, quantity: number): ActionResult => {
+    (productId: string, sku: string, quantity: number, gift?: GiftOptions): ActionResult => {
       const product = products.find((p) => p.id === productId);
       const variant = product?.variants.find((v) => v.sku === sku);
       if (!product || !variant || !product.active) {
@@ -262,7 +314,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (variant.stock <= 0) {
         return { ok: false, message: "Esta opción está agotada." };
       }
-      const inCart = cart.find((i) => i.productId === productId && i.sku === sku)?.quantity ?? 0;
+      if (gift && !product.giftEnabled) {
+        return { ok: false, message: "Esta joya no admite personalización de regalo." };
+      }
+      const inCart = unitsForSku(cart, sku);
       if (inCart + quantity > variant.stock) {
         const left = Math.max(0, variant.stock - inCart);
         return {
@@ -272,29 +327,33 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             : "Ya tienes en el carrito todo el stock disponible de esta opción.",
         };
       }
+      const target = { productId, sku, gift };
       setCart((list) => {
-        const exists = list.some((i) => i.productId === productId && i.sku === sku);
+        const exists = list.some((i) => sameLine(i, target));
         return exists
-          ? list.map((i) => (i.productId === productId && i.sku === sku ? { ...i, quantity: i.quantity + quantity } : i))
-          : [...list, { productId, sku, quantity }];
+          ? list.map((i) => (sameLine(i, target) ? { ...i, quantity: i.quantity + quantity } : i))
+          : [...list, { productId, sku, quantity, ...(gift ? { gift } : {}) }];
       });
-      return { ok: true, message: `${product.name} se agregó al carrito.` };
+      return { ok: true, message: gift ? `Regalo con ${product.name} agregado al carrito.` : `${product.name} se agregó al carrito.` };
     },
     [cart, products],
   );
 
   const updateQuantity = useCallback(
-    (productId: string, sku: string, quantity: number) => {
+    (productId: string, sku: string, quantity: number, gift?: GiftOptions) => {
       const variant = products.find((p) => p.id === productId)?.variants.find((v) => v.sku === sku);
-      const max = Math.max(1, variant?.stock ?? 1);
+      const target = { productId, sku, gift };
+      const others = cart.filter((i) => i.sku === sku && !sameLine(i, target)).reduce((sum, i) => sum + i.quantity, 0);
+      const max = Math.max(1, (variant?.stock ?? 1) - others);
       const next = Math.min(Math.max(1, Math.round(quantity)), max);
-      setCart((list) => list.map((i) => (i.productId === productId && i.sku === sku ? { ...i, quantity: next } : i)));
+      setCart((list) => list.map((i) => (sameLine(i, target) ? { ...i, quantity: next } : i)));
     },
-    [products],
+    [products, cart],
   );
 
-  const removeFromCart = useCallback((productId: string, sku: string) => {
-    setCart((list) => list.filter((i) => !(i.productId === productId && i.sku === sku)));
+  const removeFromCart = useCallback((productId: string, sku: string, gift?: GiftOptions) => {
+    const target = { productId, sku, gift };
+    setCart((list) => list.filter((i) => !sameLine(i, target)));
   }, []);
 
   const clearCart = useCallback(() => setCart([]), []);
@@ -404,6 +463,45 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [products, isAdmin, persist],
   );
 
+  const savePackaging = useCallback(
+    (option: PackagingOption) => {
+      setPackaging((list) => (list.some((o) => o.id === option.id) ? list.map((o) => (o.id === option.id ? option : o)) : [...list, option]));
+      if (isAdmin) persist(dbSavePackaging(option), true);
+    },
+    [isAdmin, persist],
+  );
+  const deletePackaging = useCallback(
+    (id: string) => {
+      setPackaging((list) => list.filter((o) => o.id !== id));
+      if (isAdmin) persist(dbDeletePackaging(id), true);
+    },
+    [isAdmin, persist],
+  );
+  const saveTheme = useCallback(
+    (theme: MeaningTheme) => {
+      setThemes((list) => (list.some((t) => t.id === theme.id) ? list.map((t) => (t.id === theme.id ? theme : t)) : [...list, theme]));
+      if (isAdmin) persist(dbSaveTheme(theme), true);
+    },
+    [isAdmin, persist],
+  );
+  const deleteTheme = useCallback(
+    (id: string) => {
+      setThemes((list) => list.filter((t) => t.id !== id));
+      if (isAdmin) persist(dbDeleteTheme(id), true);
+    },
+    [isAdmin, persist],
+  );
+  const saveDedicationMax = useCallback(
+    (value: number) => {
+      setDedicationMax(value);
+      if (isAdmin) persist(dbSaveDedicationMax(value), true);
+    },
+    [isAdmin, persist],
+  );
+
+  const activePackaging = useMemo(() => packaging.filter((o) => o.active).sort((a, b) => a.sortOrder - b.sortOrder), [packaging]);
+  const activeThemes = useMemo(() => themes.filter((t) => t.active).sort((a, b) => a.sortOrder - b.sortOrder), [themes]);
+
   const resetDemo = useCallback(() => {
     for (const key of Object.values(STORAGE_KEYS)) removeStorage(key);
     setProducts(initialProducts);
@@ -426,6 +524,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     addToCart,
     updateQuantity,
     removeFromCart,
+    packaging,
+    themes,
+    activePackaging,
+    activeThemes,
+    dedicationMax,
+    savePackaging,
+    deletePackaging,
+    saveTheme,
+    deleteTheme,
+    saveDedicationMax,
     clearCart,
     giftNote,
     setGiftNote,

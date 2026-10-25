@@ -5,6 +5,7 @@ import { useToast } from "@/context/ToastContext";
 import { cn } from "@/lib/format";
 import { dbCreateOrder, supabase } from "@/lib/supabase";
 import { whatsappUrl } from "@/lib/whatsapp";
+import type { CartItem } from "@/types";
 import { MessageCircle } from "@/components/ui/icons";
 
 /**
@@ -20,7 +21,7 @@ export function WhatsAppCheckoutButton({
 }: {
   message: string;
   /** Productos del carrito: si hay Supabase, el pedido se registra antes de abrir WhatsApp. */
-  items?: { productId: string; sku: string; quantity: number }[];
+  items?: CartItem[];
   disabled?: boolean;
   className?: string;
   label?: string;

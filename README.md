@@ -17,6 +17,21 @@ NEXT_PUBLIC_SUPABASE_URL=https://<tu-proyecto>.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<tu clave publishable>
 ```
 
+### Mejoras V2 · Fase A (hecha)
+
+| Qué | Dónde |
+|---|---|
+| **Arma tu regalo** (joya, ocasión, empaque, dedicatoria, resumen) | `/regalo`, `components/gift/GiftBuilder.tsx`; también desde la ficha («Armar como regalo»), el menú, el pie y la portada |
+| **Personalización en el carrito, pedido y WhatsApp** | `lib/gift.ts`, `context/StoreContext.tsx`, `lib/whatsapp.ts`, función SQL `create_order` (valida empaque, límite de dedicatoria, `gift_enabled` y stock total por SKU) |
+| **Joyas con significado** (temas editables, filtro `?tema=`, bloque en portada y ficha) | `components/home/MeaningSection.tsx`, `components/catalog/*`, tablas `meaning_themes` y `product_themes` |
+| **Panel**: Empaques (con precio opcional, 0 = sin cargo), Significados, límite de dedicatoria, campos de regalo/significado en el formulario de producto, pedidos con empaque/dedicatoria | `components/admin/GiftAdminPanels.tsx`, `ProductForm.tsx`, `OrdersTable.tsx` |
+
+Pruebas: `npm test` (lógica de líneas del carrito y dedicatoria). La función `create_order` se probó con casos válidos e inválidos directamente en la base.
+
+Datos de ejemplo: los dos empaques sembrados se llaman «(demostración)», tienen precio 0 y se editan o eliminan desde el panel. Los textos de los 6 temas son simbólicos y editables.
+
+**Pendiente (Fases B y C del prompt V2):** combos y promociones, asistente «Encuentra tu joya ideal», stock mínimo por variante, seguimiento de pedidos con código protegido, aviso de reposición, guías de tallas/cuidados, video, catálogo PDF, QR/enlaces compartibles, reseñas autorizadas e indicadores avanzados.
+
 ---
 
 ## 1. Requisitos

@@ -25,6 +25,8 @@ export interface CatalogFilters {
   query: string;
   categories: CategoryId[];
   materials: MaterialType[];
+  /** Ids de «Joyas con significado». */
+  themes: string[];
   price: PriceRange;
   onlyAvailable: boolean;
 }
@@ -33,6 +35,7 @@ export const emptyFilters: CatalogFilters = {
   query: "",
   categories: [],
   materials: [],
+  themes: [],
   price: "todos",
   onlyAvailable: false,
 };
@@ -87,6 +90,7 @@ export function filterProducts(
     if (!p.active) return false;
     if (filters.categories.length && !filters.categories.includes(p.categoryId)) return false;
     if (filters.materials.length && !filters.materials.includes(p.materialType)) return false;
+    if (filters.themes.length && !filters.themes.some((t) => p.themeIds?.includes(t))) return false;
     if (!inPriceRange(p.price, filters.price)) return false;
     if (filters.onlyAvailable && isSoldOut(p)) return false;
     if (q) {

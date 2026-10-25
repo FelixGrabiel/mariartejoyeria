@@ -27,6 +27,9 @@ interface Draft {
   featured: boolean;
   active: boolean;
   isNew: boolean;
+  giftEnabled: boolean;
+  meaning: string;
+  themeIds: string[];
 }
 
 type Errors = Record<string, string>;
@@ -49,6 +52,9 @@ function toDraft(product?: Product): Draft {
     featured: product?.featured ?? false,
     active: product?.active ?? true,
     isNew: product?.isNew ?? true,
+    giftEnabled: product?.giftEnabled ?? false,
+    meaning: product?.meaning ?? "",
+    themeIds: product?.themeIds ?? [],
   };
 }
 
@@ -72,7 +78,7 @@ export function ProductForm({
   product?: Product;
   onSaved: (message: string) => void;
 }) {
-  const { products, saveProduct } = useStore();
+  const { products, saveProduct, themes } = useStore();
   const isNew = !product;
   const [draft, setDraft] = useState<Draft>(() => toDraft(product));
   const [errors, setErrors] = useState<Errors>({});
@@ -168,6 +174,9 @@ export function ProductForm({
       isNew: draft.isNew,
       createdAt: product?.createdAt ?? todayISO(),
       care: product?.care,
+      giftEnabled: draft.giftEnabled,
+      meaning: draft.meaning.trim() || undefined,
+      themeIds: draft.themeIds,
     };
     saveProduct(saved, isNew);
     onSaved(isNew ? `«${saved.name}» se creó en el catálogo demo.` : `Cambios guardados en «${saved.name}».`);
@@ -282,6 +291,55 @@ export function ProductForm({
             <ErrorText id="pf-description-error" message={errors.description} />
           </div>
         </div>
+
+        <fieldset className="rounded-2xl border border-line bg-white p-4 sm:p-5">
+          <legend className="px-1 text-[13px] font-semibold text-ink">Regalo y significado</legend>
+          <label className="flex cursor-pointer items-start gap-3 text-[14px]">
+            <input type="checkbox" checked={draft.giftEnabled} onChange={(e) => set({ giftEnabled: e.target.checked })} className="mt-1 h-4 w-4 accent-rose" />
+            <span>
+              <span className="font-semibold text-ink">Permitir «Arma tu regalo»</span>
+              <span className="block text-[12.5px] text-muted">El cliente podrá elegir ocasión, empaque y dedicatoria para esta joya.</span>
+            </span>
+          </label>
+          {themes.length > 0 && (
+            <div className="mt-4">
+              <p className="field-label">Joyas con significado</p>
+              <div className="flex flex-wrap gap-2">
+                {themes.map((t) => {
+                  const on = draft.themeIds.includes(t.id);
+                  return (
+                    <label
+                      key={t.id}
+                      className={cn(
+                        "cursor-pointer rounded-full border px-3 py-1.5 text-[13px] transition has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-rose",
+                        on ? "border-rose bg-blush-soft font-semibold text-rose-deep" : "border-line bg-white text-ink",
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        className="sr-only"
+                        checked={on}
+                        onChange={() => set({ themeIds: on ? draft.themeIds.filter((x) => x !== t.id) : [...draft.themeIds, t.id] })}
+                      />
+                      {t.name}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          <div className="mt-4">
+            <label htmlFor="pf-meaning" className="field-label">Significado propio de esta joya (opcional)</label>
+            <textarea
+              id="pf-meaning"
+              rows={3}
+              className="field resize-none"
+              value={draft.meaning}
+              onChange={(e) => set({ meaning: e.target.value })}
+              placeholder="Si lo dejas vacío se usa el texto del tema. Describe el símbolo, sin prometer efectos reales."
+            />
+          </div>
+        </fieldset>
 
         <fieldset>
           <legend className="field-label">Fotografías</legend>

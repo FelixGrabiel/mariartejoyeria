@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { CategoryId, MaterialType, Order, OrderStatus, Product, StockMovement } from "@/types";
+import type { CartItem, CategoryId, MaterialType, MeaningTheme, Order, OrderStatus, PackagingOption, Product, StockMovement } from "@/types";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -23,6 +23,9 @@ interface ProductRow {
   variant_name: string | null;
   care: string | null;
   created_at: string;
+  gift_enabled: boolean;
+  meaning: string | null;
+  product_themes: { theme_id: string }[];
   product_variants: { sku: string; label: string; stock: number; sort_order: number }[];
 }
 
@@ -31,7 +34,7 @@ export async function fetchCatalog(): Promise<Product[] | null> {
   if (!supabase) return null;
   const { data, error } = await supabase
     .from("products")
-    .select("*, product_variants(sku,label,stock,sort_order)")
+    .select("*, product_variants(sku,label,stock,sort_order), product_themes(theme_id)")
     .order("created_at", { ascending: false });
   if (error || !data) return null;
   return (data as ProductRow[]).map(rowToProduct);
@@ -56,6 +59,9 @@ function rowToProduct(r: ProductRow): Product {
     variantName: r.variant_name ?? undefined,
     care: r.care ?? undefined,
     createdAt: r.created_at,
+    giftEnabled: r.gift_enabled,
+    meaning: r.meaning ?? undefined,
+    themeIds: (r.product_themes ?? []).map((t) => t.theme_id),
     variants: [...r.product_variants]
       .sort((a, b) => a.sort_order - b.sort_order)
       .map(({ sku, label, stock }) => ({ sku, label, stock })),
@@ -72,10 +78,10 @@ export async function checkIsAdmin(userId: string): Promise<boolean> {
 export async function fetchAdminData(): Promise<{ products: Product[]; orders: Order[]; movements: StockMovement[] } | null> {
   if (!supabase) return null;
   const [p, o, m] = await Promise.all([
-    supabase.from("products").select("*, product_variants(sku,label,stock,sort_order)").order("created_at", { ascending: false }),
+    supabase.from("products").select("*, product_variants(sku,label,stock,sort_order), product_themes(theme_id)").order("created_at", { ascending: false }),
     supabase
       .from("orders")
-      .select("id,code,customer_name,district,channel,status,created_at,order_items(product_id,product_name,variant_label,quantity,unit_price)")
+      .select("id,code,customer_name,district,channel,status,created_at,order_items(product_id,product_name,variant_label,quantity,unit_price,occasion,packaging_name,packaging_price,dedication,meaning_card)")
       .order("created_at", { ascending: false })
       .order("code", { ascending: false }),
     supabase.from("inventory_movements").select("*").order("date", { ascending: false }).order("id", { ascending: false }),
@@ -91,12 +97,28 @@ export async function fetchAdminData(): Promise<{ products: Product[]; orders: O
       channel: r.channel,
       status: r.status,
       createdAt: r.created_at,
-      items: (r.order_items ?? []).map((i: { product_id: string | null; product_name: string; variant_label: string; quantity: number; unit_price: number | string }) => ({
+      items: (r.order_items ?? []).map((i: {
+        product_id: string | null;
+        product_name: string;
+        variant_label: string;
+        quantity: number;
+        unit_price: number | string;
+        occasion: string | null;
+        packaging_name: string | null;
+        packaging_price: number | string;
+        dedication: string | null;
+        meaning_card: boolean;
+      }) => ({
         productId: i.product_id ?? "",
         productName: i.product_name,
         variantLabel: i.variant_label,
         quantity: i.quantity,
         unitPrice: Number(i.unit_price),
+        occasion: i.occasion ?? undefined,
+        packagingName: i.packaging_name ?? undefined,
+        packagingPrice: Number(i.packaging_price),
+        dedication: i.dedication ?? undefined,
+        meaningCard: i.meaning_card || undefined,
       })),
     })),
     movements: (m.data ?? []).map((r) => ({
@@ -132,8 +154,17 @@ export async function dbSaveProduct(product: Product, movements: StockMovement[]
     variant_name: product.variantName ?? null,
     care: product.care ?? null,
     created_at: product.createdAt.slice(0, 10),
+    gift_enabled: !!product.giftEnabled,
+    meaning: product.meaning?.trim() || null,
   });
   if (error) return error.message;
+  const themes = product.themeIds ?? [];
+  const delThemes = await supabase.from("product_themes").delete().eq("product_id", product.id);
+  if (delThemes.error) return delThemes.error.message;
+  if (themes.length) {
+    const insThemes = await supabase.from("product_themes").insert(themes.map((theme_id) => ({ product_id: product.id, theme_id })));
+    if (insThemes.error) return insThemes.error.message;
+  }
   const skus = product.variants.map((v) => v.sku);
   const del = await supabase.from("product_variants").delete().eq("product_id", product.id).not("sku", "in", `(${skus.map((s) => `"${s}"`).join(",")})`);
   if (del.error) return del.error.message;
@@ -181,11 +212,18 @@ export async function dbSetStock(sku: string, stock: number, movement: StockMove
 
 /** Registra el pedido en la base (precio y stock se validan en el servidor). Devuelve el código o un error. */
 export async function dbCreateOrder(
-  items: { productId: string; sku: string; quantity: number }[],
+  items: CartItem[],
 ): Promise<{ code: string } | { error: string }> {
   if (!supabase) return { error: "Supabase no está configurado." };
   const { data, error } = await supabase.rpc("create_order", {
-    p_items: items.map((i) => ({ product_id: i.productId, sku: i.sku, quantity: i.quantity })),
+    p_items: items.map((i) => ({
+      product_id: i.productId,
+      sku: i.sku,
+      quantity: i.quantity,
+      gift: i.gift
+        ? { occasion: i.gift.occasion, packaging_id: i.gift.packagingId ?? "", dedication: i.gift.dedication, meaning_card: i.gift.meaningCard }
+        : undefined,
+    })),
   });
   if (error) return { error: error.message };
   return { code: String(data) };
@@ -199,4 +237,86 @@ export async function uploadProductImage(file: File): Promise<{ url: string } | 
   const { error } = await supabase.storage.from("product-images").upload(path, file, { contentType: file.type });
   if (error) return { error: error.message };
   return { url: supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl };
+}
+
+
+// ---------- Empaques, significados y ajustes ----------
+
+export interface StoreConfig {
+  packaging: PackagingOption[];
+  themes: MeaningTheme[];
+  dedicationMax: number;
+}
+
+/** Con sesión de administrador devuelve también lo inactivo (por RLS); sin sesión, solo lo activo. */
+export async function fetchStoreConfig(): Promise<StoreConfig | null> {
+  if (!supabase) return null;
+  const [pk, th, st] = await Promise.all([
+    supabase.from("packaging_options").select("*").order("sort_order"),
+    supabase.from("meaning_themes").select("*").order("sort_order"),
+    supabase.from("store_settings").select("key,value").eq("key", "dedication_max_chars").maybeSingle(),
+  ]);
+  if (pk.error || th.error) return null;
+  const max = Number(st.data?.value);
+  return {
+    packaging: (pk.data ?? []).map((r) => ({
+      id: r.id,
+      name: r.name,
+      description: r.description,
+      price: Number(r.price),
+      active: r.active,
+      sortOrder: r.sort_order,
+    })),
+    themes: (th.data ?? []).map((r) => ({
+      id: r.id,
+      name: r.name,
+      description: r.description,
+      active: r.active,
+      sortOrder: r.sort_order,
+    })),
+    dedicationMax: Number.isInteger(max) && max > 0 ? max : 150,
+  };
+}
+
+export async function dbSavePackaging(p: PackagingOption): Promise<DbResult> {
+  if (!supabase) return "Supabase no está configurado.";
+  const { error } = await supabase.from("packaging_options").upsert({
+    id: p.id,
+    name: p.name,
+    description: p.description,
+    price: p.price,
+    active: p.active,
+    sort_order: p.sortOrder,
+  });
+  return error?.message ?? null;
+}
+
+export async function dbDeletePackaging(id: string): Promise<DbResult> {
+  if (!supabase) return "Supabase no está configurado.";
+  const { error } = await supabase.from("packaging_options").delete().eq("id", id);
+  return error?.message ?? null;
+}
+
+export async function dbSaveTheme(t: MeaningTheme): Promise<DbResult> {
+  if (!supabase) return "Supabase no está configurado.";
+  const { error } = await supabase.from("meaning_themes").upsert({
+    id: t.id,
+    name: t.name,
+    description: t.description,
+    active: t.active,
+    sort_order: t.sortOrder,
+  });
+  return error?.message ?? null;
+}
+
+export async function dbDeleteTheme(id: string): Promise<DbResult> {
+  if (!supabase) return "Supabase no está configurado.";
+  const { error } = await supabase.from("meaning_themes").delete().eq("id", id);
+  return error?.message ?? null;
+}
+
+export async function dbSaveDedicationMax(value: number): Promise<DbResult> {
+  if (!supabase) return "Supabase no está configurado.";
+  const { error } = await supabase.from("store_settings").upsert({ key: "dedication_max_chars", value: String(value) });
+  return error?.message ?? null;
 }

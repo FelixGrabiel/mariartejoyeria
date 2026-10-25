@@ -2,15 +2,17 @@
 
 import Link from "next/link";
 import { cn } from "@/lib/format";
-import { ClipboardList, History, LayoutDashboard, Package, Store } from "@/components/ui/icons";
+import { ClipboardList, Gift, History, LayoutDashboard, Package, Sparkles, Store } from "@/components/ui/icons";
 
-export type AdminSection = "resumen" | "productos" | "pedidos" | "inventario";
+export type AdminSection = "resumen" | "productos" | "pedidos" | "inventario" | "empaques" | "significados";
 
 export const adminSections: { id: AdminSection; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "resumen", label: "Resumen", icon: LayoutDashboard },
   { id: "productos", label: "Productos", icon: Package },
   { id: "pedidos", label: "Pedidos", icon: ClipboardList },
   { id: "inventario", label: "Inventario", icon: History },
+  { id: "empaques", label: "Empaques", icon: Gift },
+  { id: "significados", label: "Significados", icon: Sparkles },
 ];
 
 export function AdminSidebar({

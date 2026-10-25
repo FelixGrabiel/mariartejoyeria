@@ -28,13 +28,14 @@ import { SortSelect } from "./SortSelect";
 function filtersFromParams(params: URLSearchParams): CatalogFilters {
   const cat = params.get("categoria");
   const validCat = categories.some((c) => c.id === cat) ? [cat as CategoryId] : [];
-  return { ...emptyFilters, query: params.get("q") ?? "", categories: validCat };
+  const tema = params.get("tema");
+  return { ...emptyFilters, query: params.get("q") ?? "", categories: validCat, themes: tema ? [tema] : [] };
 }
 
 export function CatalogView() {
   const searchParams = useSearchParams();
   const paramsKey = searchParams?.toString() ?? "";
-  const { storeProducts, hydrated } = useStore();
+  const { storeProducts, hydrated, activeThemes } = useStore();
   const [filters, setFilters] = useState<CatalogFilters>(() => filtersFromParams(new URLSearchParams(paramsKey)));
   const [sort, setSort] = useState<SortOption>("destacados");
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -56,6 +57,7 @@ export function CatalogView() {
     for (const p of storeProducts) {
       map[p.categoryId] = (map[p.categoryId] ?? 0) + 1;
       map[p.materialType] = (map[p.materialType] ?? 0) + 1;
+      for (const t of p.themeIds ?? []) map[`tema:${t}`] = (map[`tema:${t}`] ?? 0) + 1;
     }
     return map;
   }, [storeProducts]);
@@ -67,6 +69,11 @@ export function CatalogView() {
       key: `c-${id}`,
       label: getCategory(id)?.name ?? id,
       remove: () => setFilters((f) => ({ ...f, categories: f.categories.filter((c) => c !== id) })),
+    })),
+    ...filters.themes.map((id) => ({
+      key: `t-${id}`,
+      label: activeThemes.find((t) => t.id === id)?.name ?? id,
+      remove: () => setFilters((f) => ({ ...f, themes: f.themes.filter((x) => x !== id) })),
     })),
     ...filters.materials.map((m) => ({
       key: `m-${m}`,
@@ -84,6 +91,7 @@ export function CatalogView() {
   const activeCount = activeChips.length;
   const singleCategory = filters.categories.length === 1 ? getCategory(filters.categories[0]) : undefined;
   const sampleCategory = singleCategory && !singleCategory.image;
+  const singleTheme = filters.themes.length === 1 ? activeThemes.find((t) => t.id === filters.themes[0]) : undefined;
 
   return (
     <div className="container-page pt-6 sm:pt-8">
@@ -97,12 +105,12 @@ export function CatalogView() {
 
       <header className="mb-8 grid gap-5 lg:grid-cols-[1fr_auto] lg:items-end">
         <div>
-          <p className="eyebrow mb-3">{singleCategory ? singleCategory.name : "Todas las joyas"}</p>
+          <p className="eyebrow mb-3">{singleTheme ? "Joyas con significado" : singleCategory ? singleCategory.name : "Todas las joyas"}</p>
           <h1 className="font-serif text-[2.6rem] font-semibold leading-none text-ink sm:text-[3.4rem]">
-            {singleCategory ? singleCategory.name : "Nuestra colección"}
+            {singleTheme ? singleTheme.name : singleCategory ? singleCategory.name : "Nuestra colección"}
           </h1>
           <p className="mt-3 max-w-lg text-[15px] text-muted">
-            {singleCategory?.description ?? "Piezas con significado para llevar, compartir y regalar."}
+            {singleTheme?.description || singleCategory?.description || "Piezas con significado para llevar, compartir y regalar."}
           </p>
         </div>
         <DemoNotice className="max-w-md">Catálogo de ejemplo: nombres, precios y stock son simulados.</DemoNotice>

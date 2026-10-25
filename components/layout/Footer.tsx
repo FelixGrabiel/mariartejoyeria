@@ -12,6 +12,7 @@ const columns = [
       { href: "/catalogo?categoria=pulseras", label: "Pulseras" },
       { href: "/catalogo?categoria=sets", label: "Sets para compartir" },
       { href: "/catalogo?categoria=regalos", label: "Regalos" },
+      { href: "/regalo", label: "Arma tu regalo" },
       { href: "/favoritos", label: "Favoritos" },
     ],
   },
