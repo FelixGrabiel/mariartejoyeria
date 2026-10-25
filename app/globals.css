@@ -1,0 +1,187 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------
+   Tokens de marca MariArte
+   ------------------------------------------------------------------ */
+@theme {
+  --color-blush: #f0d3d0;
+  --color-blush-soft: #f9ecea;
+  --color-blush-deep: #e4bcb8;
+  --color-ivory: #fff9f5;
+  --color-champagne: #c9a47d;
+  --color-champagne-deep: #85643f;
+  --color-rose: #825e61;
+  --color-rose-deep: #684a4d;
+  --color-ink: #2f292b;
+  --color-muted: #6b5f62;
+  --color-line: #ecdcd8;
+  --color-success: #3b6f54;
+  --color-success-soft: #e4f0e8;
+  --color-warning: #85570f;
+  --color-warning-soft: #fbefd9;
+  --color-danger: #a1444a;
+  --color-danger-soft: #f8e3e2;
+
+  --shadow-soft: 0 18px 40px -22px rgb(104 74 77 / 0.35);
+  --shadow-card: 0 1px 2px rgb(47 41 43 / 0.04), 0 10px 30px -18px rgb(104 74 77 / 0.25);
+
+  --animate-pulse: pulse 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@theme inline {
+  --font-serif: var(--font-cormorant), "Cormorant Garamond", Georgia, serif;
+  --font-sans: var(--font-inter), Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ------------------------------------------------------------------
+   Base
+   ------------------------------------------------------------------ */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+  body {
+    background: var(--color-ivory);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  ::selection {
+    background: var(--color-blush);
+    color: var(--color-ink);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-rose);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* ------------------------------------------------------------------
+   Componentes reutilizables
+   ------------------------------------------------------------------ */
+@layer components {
+  .container-page {
+    width: 100%;
+    max-width: 1240px;
+    margin-inline: auto;
+    padding-inline: 1rem;
+  }
+  @media (min-width: 640px) {
+    .container-page {
+      padding-inline: 1.75rem;
+    }
+  }
+  @media (min-width: 1024px) {
+    .container-page {
+      padding-inline: 2.5rem;
+    }
+  }
+
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.22em] text-rose;
+  }
+
+  .btn {
+    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 text-[14px] font-semibold tracking-[0.01em] transition duration-200 select-none disabled:cursor-not-allowed disabled:opacity-45;
+  }
+  .btn-sm {
+    @apply min-h-10 px-4 text-[13px];
+  }
+  .btn-primary {
+    @apply bg-rose text-white hover:bg-rose-deep active:scale-[0.98];
+  }
+  .btn-dark {
+    @apply bg-ink text-ivory hover:bg-black active:scale-[0.98];
+  }
+  .btn-secondary {
+    @apply border border-rose/40 bg-white text-rose-deep hover:border-rose hover:bg-blush-soft;
+  }
+  .btn-ghost {
+    @apply text-rose-deep hover:bg-blush-soft;
+  }
+  .btn-danger {
+    @apply bg-danger text-white hover:brightness-95;
+  }
+  .btn-whatsapp {
+    @apply bg-[#1f7a4d] text-white hover:bg-[#19663f] active:scale-[0.98];
+  }
+
+  .icon-btn {
+    @apply inline-flex h-11 w-11 items-center justify-center rounded-full text-ink transition hover:bg-blush-soft;
+  }
+
+  .field-label {
+    @apply mb-1.5 block text-[13px] font-semibold text-ink;
+  }
+  .field {
+    @apply block min-h-12 w-full rounded-xl border border-line bg-white px-4 py-2.5 text-[15px] text-ink placeholder:text-muted/70 transition focus:border-rose focus:ring-2 focus:ring-blush focus:outline-none;
+  }
+  .field[aria-invalid="true"] {
+    @apply border-danger ring-2 ring-danger-soft;
+  }
+  .field-error {
+    @apply mt-1.5 flex items-center gap-1 text-[13px] text-danger;
+  }
+
+  .card {
+    @apply rounded-3xl border border-line/80 bg-white shadow-card;
+  }
+
+  .link-underline {
+    @apply underline decoration-champagne/60 decoration-1 underline-offset-4 transition hover:decoration-rose;
+  }
+}
+
+/* ------------------------------------------------------------------
+   Microinteracciones
+   ------------------------------------------------------------------ */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes sheet-in {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes drawer-left-in {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+@keyframes drawer-right-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-in { animation: fade-in 0.2s ease-out both; }
+.toast-in { animation: toast-in 0.25s ease-out both; }
+.sheet-in { animation: sheet-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.drawer-left-in { animation: drawer-left-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.drawer-right-in { animation: drawer-right-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.rise { animation: rise 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.rise-delay-1 { animation-delay: 0.08s; }
+.rise-delay-2 { animation-delay: 0.16s; }
+.rise-delay-3 { animation-delay: 0.24s; }
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
