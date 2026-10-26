@@ -1,6 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useStore } from "@/context/StoreContext";
+import { emptyCustomer, isCustomerValid, validateCustomer, type Customer } from "@/lib/customer";
+import { readStorage, writeStorage } from "@/lib/storage";
+import { supabase } from "@/lib/supabase";
 import { formatPrice } from "@/lib/format";
 import { buildOrderMessage } from "@/lib/whatsapp";
 import { ChevronDown, Info } from "@/components/ui/icons";
@@ -11,7 +15,20 @@ export function CartSummary() {
   const valid = cartLines.filter((l) => !l.issue);
   const units = valid.reduce((sum, l) => sum + l.item.quantity, 0);
   const hasIssues = cartLines.some((l) => l.issue);
-  const message = buildOrderMessage(cartLines, giftNote);
+  const [customer, setCustomer] = useState<Customer>(emptyCustomer);
+  const [touched, setTouched] = useState(false);
+  const needsContact = Boolean(supabase);
+  const errors = validateCustomer(customer);
+  const contactOk = !needsContact || isCustomerValid(customer);
+  const message = buildOrderMessage(cartLines, giftNote, needsContact ? customer : undefined);
+
+  useEffect(() => {
+    setCustomer(readStorage<Customer>("mariarte.v1.customer", emptyCustomer));
+  }, []);
+  useEffect(() => {
+    writeStorage("mariarte.v1.customer", customer);
+  }, [customer]);
+  const set = (patch: Partial<Customer>) => setCustomer((c) => ({ ...c, ...patch }));
 
   return (
     <aside aria-labelledby="summary-title" className="card p-6 sm:p-7 lg:sticky lg:top-28">
@@ -41,8 +58,29 @@ export function CartSummary() {
         </p>
       )}
 
-      <div className="mt-6">
-        <WhatsAppCheckoutButton message={message} items={valid.map((l) => l.item)} disabled={valid.length === 0} />
+      {needsContact && (
+        <fieldset className="mt-6 space-y-3 border-t border-line pt-5">
+          <legend className="mb-1 text-[13px] font-semibold text-ink">Tus datos para coordinar el pedido</legend>
+          <Field id="cu-name" label="Nombre" value={customer.name} onChange={(v) => set({ name: v })} error={touched ? errors.name : undefined} autoComplete="name" />
+          <Field id="cu-phone" label="Celular" value={customer.phone} onChange={(v) => set({ phone: v })} error={touched ? errors.phone : undefined} autoComplete="tel" inputMode="tel" placeholder="987 654 321" />
+          <Field id="cu-district" label="Distrito o ciudad" value={customer.district} onChange={(v) => set({ district: v })} error={touched ? errors.district : undefined} autoComplete="address-level2" />
+          <Field id="cu-address" label="Dirección (opcional)" value={customer.address} onChange={(v) => set({ address: v })} error={touched ? errors.address : undefined} autoComplete="street-address" />
+          <p className="text-[11.5px] leading-snug text-muted">
+            Usamos estos datos solo para coordinar tu pedido. Con tu código y celular podrás{" "}
+            <a href="/pedido" className="link-underline text-rose-deep">seguir tu pedido</a>.
+          </p>
+        </fieldset>
+      )}
+
+      <div className="mt-6" onClickCapture={() => !contactOk && setTouched(true)}>
+        <WhatsAppCheckoutButton
+          message={message}
+          items={valid.map((l) => l.item)}
+          customer={customer}
+          buildMessage={(code) => buildOrderMessage(cartLines, giftNote, customer, code)}
+          disabled={valid.length === 0 || !contactOk}
+        />
+        {valid.length > 0 && !contactOk && <p className="mt-2 text-center text-[12px] text-muted">Completa tus datos para enviar el pedido.</p>}
       </div>
 
       <p className="mt-4 flex gap-2 text-[12.5px] leading-snug text-muted">
@@ -60,5 +98,28 @@ export function CartSummary() {
         </pre>
       </details>
     </aside>
+  );
+}
+
+function Field({
+  id,
+  label,
+  value,
+  onChange,
+  error,
+  ...rest
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  error?: string;
+} & Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange" | "value" | "id">) {
+  return (
+    <div>
+      <label htmlFor={id} className="field-label">{label}</label>
+      <input id={id} className="field" value={value} onChange={(e) => onChange(e.target.value)} aria-invalid={Boolean(error)} aria-describedby={error ? `${id}-error` : undefined} {...rest} />
+      {error && <p id={`${id}-error`} className="field-error">{error}</p>}
+    </div>
   );
 }

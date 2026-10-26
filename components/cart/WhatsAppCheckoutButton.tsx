@@ -5,6 +5,7 @@ import { useToast } from "@/context/ToastContext";
 import { cn } from "@/lib/format";
 import { dbCreateOrder, supabase } from "@/lib/supabase";
 import { whatsappUrl } from "@/lib/whatsapp";
+import type { Customer } from "@/lib/customer";
 import type { CartItem } from "@/types";
 import { MessageCircle } from "@/components/ui/icons";
 
@@ -15,6 +16,8 @@ import { MessageCircle } from "@/components/ui/icons";
 export function WhatsAppCheckoutButton({
   message,
   items,
+  customer,
+  buildMessage,
   disabled = false,
   className,
   label = "Pedir por WhatsApp",
@@ -22,6 +25,10 @@ export function WhatsAppCheckoutButton({
   message: string;
   /** Productos del carrito: si hay Supabase, el pedido se registra antes de abrir WhatsApp. */
   items?: CartItem[];
+  /** Datos de contacto: obligatorios para registrar el pedido. */
+  customer?: Customer;
+  /** Arma el texto final de WhatsApp una vez que se conoce el código del pedido. */
+  buildMessage?: (orderCode: string) => string;
   disabled?: boolean;
   className?: string;
   label?: string;
@@ -39,19 +46,20 @@ export function WhatsAppCheckoutButton({
     setBusy(true);
     // Se abre la pestaña de inmediato para que el navegador no bloquee la ventana emergente.
     const tab = window.open("about:blank", "_blank");
-    const result = await dbCreateOrder(items);
+    const result = await dbCreateOrder(items, customer ?? { name: "", phone: "", district: "", address: "" });
     setBusy(false);
     if ("error" in result) {
       tab?.close();
       showToast(`No pudimos registrar tu pedido: ${result.error}`, { tone: "error" });
       return;
     }
-    const text = `Pedido web ${result.code}
-
-${message}`;
+    const text = buildMessage ? buildMessage(result.code) : `Pedido web ${result.code}\n\n${message}`;
     if (tab) tab.location.href = whatsappUrl(text);
     else window.location.href = whatsappUrl(text);
-    showToast(`Pedido ${result.code} registrado. Envía el mensaje en WhatsApp para confirmarlo.`, { tone: "success" });
+    showToast(`Pedido ${result.code} registrado. Envía el mensaje en WhatsApp para confirmarlo.`, {
+      tone: "success",
+      action: { label: "Seguir pedido", href: "/pedido" },
+    });
   }
 
   if (disabled) {

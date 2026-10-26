@@ -37,7 +37,7 @@ export function AdminDashboard() {
   return (
     <div className="min-h-dvh bg-[#faf5f2] lg:grid lg:grid-cols-[256px_1fr]">
       <aside className="hidden bg-ink px-5 py-7 lg:sticky lg:top-0 lg:block lg:h-dvh">
-        <AdminSidebar current={section} onSelect={setSection} />
+        <AdminSidebar current={section} onSelect={setSection} pendingOrders={pending} />
       </aside>
 
       <Modal
@@ -49,7 +49,7 @@ export function AdminDashboard() {
         panelClassName="!bg-ink text-ink [&_.icon-btn]:bg-ivory"
       >
         <div className="h-full pt-2">
-          <AdminSidebar current={section} onSelect={setSection} onNavigate={() => setNavOpen(false)} />
+          <AdminSidebar current={section} onSelect={setSection} onNavigate={() => setNavOpen(false)} pendingOrders={pending} />
         </div>
       </Modal>
 

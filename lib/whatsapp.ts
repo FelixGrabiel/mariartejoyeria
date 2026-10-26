@@ -1,5 +1,6 @@
 import { site } from "@/data/site";
 import type { CartLine, Product, ProductVariant } from "@/types";
+import type { Customer } from "./customer";
 import { formatPrice } from "./format";
 
 /**
@@ -11,7 +12,7 @@ export function whatsappUrl(message?: string): string {
   return message ? `${base}?text=${encodeURIComponent(message)}` : base;
 }
 
-export function buildOrderMessage(lines: CartLine[], giftNote?: string): string {
+export function buildOrderMessage(lines: CartLine[], giftNote?: string, customer?: Customer, orderCode?: string): string {
   const valid = lines.filter((l) => !l.issue);
   const subtotal = valid.reduce((sum, l) => sum + l.lineTotal, 0);
 
@@ -38,6 +39,7 @@ export function buildOrderMessage(lines: CartLine[], giftNote?: string): string 
     .join("\n");
 
   const parts = [
+    ...(orderCode ? [`Pedido web ${orderCode}`, ""] : []),
     "Hola, MariArte. Quisiera solicitar este pedido (queda pendiente de tu confirmación):",
     "",
     body,
@@ -46,6 +48,13 @@ export function buildOrderMessage(lines: CartLine[], giftNote?: string): string 
     "Envío por confirmar.",
     `Total referencial (sin envío): ${formatPrice(subtotal)}`,
   ];
+
+  if (customer && customer.name.trim()) {
+    parts.push("", "Mis datos:", `Nombre: ${customer.name.trim()}`);
+    if (customer.phone.trim()) parts.push(`Celular: ${customer.phone.trim()}`);
+    if (customer.district.trim()) parts.push(`Distrito/ciudad: ${customer.district.trim()}`);
+    if (customer.address.trim()) parts.push(`Dirección: ${customer.address.trim()}`);
+  }
 
   if (giftNote?.trim()) {
     parts.push("", "Dedicatoria / nota para regalo:", `"${giftNote.trim()}"`);

@@ -14,6 +14,7 @@ const columns = [
       { href: "/catalogo?categoria=regalos", label: "Regalos" },
       { href: "/regalo", label: "Arma tu regalo" },
       { href: "/favoritos", label: "Favoritos" },
+      { href: "/pedido", label: "Sigue tu pedido" },
     ],
   },
   {

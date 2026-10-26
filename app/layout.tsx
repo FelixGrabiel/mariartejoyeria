@@ -5,6 +5,7 @@ import { SiteShell } from "@/components/layout/SiteShell";
 import { StoreProvider } from "@/context/StoreContext";
 import { ToastProvider } from "@/context/ToastContext";
 import { site } from "@/data/site";
+import { ALLOW_INDEXING, SITE_URL } from "@/lib/seo";
 import "./globals.css";
 
 const cormorant = Cormorant_Garamond({
@@ -22,6 +23,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     default: `${site.fullName} · ${site.tagline}`,
     template: `%s · ${site.name}`,
@@ -36,7 +38,8 @@ export const metadata: Metadata = {
     type: "website",
     siteName: site.name,
   },
-  robots: { index: false, follow: false }, // Prototipo: no indexar hasta publicar la versión real.
+  // Con datos de ejemplo no se indexa. Define NEXT_PUBLIC_ALLOW_INDEXING=true en Vercel cuando cargues los datos reales.
+  robots: ALLOW_INDEXING ? { index: true, follow: true } : { index: false, follow: false },
 };
 
 export const viewport: Viewport = {

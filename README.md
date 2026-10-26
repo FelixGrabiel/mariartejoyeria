@@ -30,6 +30,15 @@ Pruebas: `npm test` (lógica de líneas del carrito y dedicatoria). La función 
 
 Datos de ejemplo: los dos empaques sembrados se llaman «(demostración)», tienen precio 0 y se editan o eliminan desde el panel. Los textos de los 6 temas son simbólicos y editables.
 
+### Hacia la tienda 100% funcional (hecho)
+
+- **Datos del cliente en el pedido** (nombre, celular peruano, distrito, dirección opcional): obligatorios y validados en el servidor (`create_order`) y en el carrito (`lib/customer.ts`). En el panel, cada pedido muestra el contacto y un enlace «Escribir» a WhatsApp.
+- **Límites contra pedidos basura:** máx. 5 pedidos por hora por red (se guarda solo un hash, no la IP), 10 por celular al día y 100 por hora en total.
+- **Seguimiento en `/pedido`:** exige código **y** celular (función `track_order`); no devuelve precios ni dirección y limita las consultas.
+- **Panel:** revisa pedidos nuevos cada minuto, muestra un contador de pendientes y avisa con un mensaje.
+- **SEO:** `sitemap.xml`, `robots.txt`, metadatos y datos estructurados por producto desde el servidor. **La indexación está apagada** mientras haya datos de ejemplo; se activa con la variable `NEXT_PUBLIC_ALLOW_INDEXING=true` (y `NEXT_PUBLIC_SITE_URL` con tu dominio) en Vercel.
+- **Esquema en el repositorio:** `supabase/migrations/` (el orden de los archivos es el orden de aplicación).
+
 **Pendiente (Fases B y C del prompt V2):** combos y promociones, asistente «Encuentra tu joya ideal», stock mínimo por variante, seguimiento de pedidos con código protegido, aviso de reposición, guías de tallas/cuidados, video, catálogo PDF, QR/enlaces compartibles, reseñas autorizadas e indicadores avanzados.
 
 ---

@@ -15,6 +15,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -195,6 +196,33 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       sub.subscription.unsubscribe();
     };
   }, [loadAdminData]);
+
+  // Mientras el administrador tiene el panel abierto, se revisan los pedidos cada minuto.
+  const knownPending = useRef<number | null>(null);
+  useEffect(() => {
+    if (!isAdmin) {
+      knownPending.current = null;
+      return;
+    }
+    const timer = setInterval(async () => {
+      const data = await fetchAdminData();
+      if (!data) return;
+      setOrders(data.orders);
+      setMovements(data.movements);
+      setProducts(data.products);
+    }, 60_000);
+    return () => clearInterval(timer);
+  }, [isAdmin]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    const pending = orders.filter((o) => o.status === "pendiente").length;
+    if (knownPending.current !== null && pending > knownPending.current) {
+      showToast(`Llegó ${pending - knownPending.current === 1 ? "un pedido nuevo" : `${pending - knownPending.current} pedidos nuevos`}.`, { tone: "info" });
+    }
+    knownPending.current = pending;
+    document.title = pending > 0 ? `(${pending}) Panel MariArte` : "Panel MariArte";
+  }, [orders, isAdmin, showToast]);
 
   const signIn = useCallback(async (email: string, password: string): Promise<string | null> => {
     if (!supabase) return "Supabase no está configurado.";

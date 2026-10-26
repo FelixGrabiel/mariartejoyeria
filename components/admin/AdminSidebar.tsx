@@ -19,7 +19,9 @@ export function AdminSidebar({
   current,
   onSelect,
   onNavigate,
+  pendingOrders = 0,
 }: {
+  pendingOrders?: number;
   current: AdminSection;
   onSelect: (section: AdminSection) => void;
   onNavigate?: () => void;
@@ -50,7 +52,12 @@ export function AdminSidebar({
                 )}
               >
                 <Icon size={18} />
-                {label}
+                <span className="flex-1">{label}</span>
+                {id === "pedidos" && pendingOrders > 0 && (
+                  <span className="rounded-full bg-rose px-2 py-0.5 text-[11px] font-bold text-white" aria-label={`${pendingOrders} pedidos pendientes`}>
+                    {pendingOrders}
+                  </span>
+                )}
               </button>
             </li>
           ))}

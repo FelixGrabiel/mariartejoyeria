@@ -118,6 +118,8 @@ export interface Order {
   id: string;
   code: string;
   customerName: string;
+  customerPhone?: string;
+  address?: string;
   district: string;
   channel: "WhatsApp" | "Instagram";
   createdAt: string;

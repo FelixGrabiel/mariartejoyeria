@@ -53,6 +53,17 @@ export function OrdersTable({ orders, compact = false }: { orders: Order[]; comp
               <td className="px-4 py-3.5">
                 <p className="text-ink">{order.customerName}</p>
                 <p className="text-[12px] text-muted">{order.district}</p>
+                {order.address && <p className="text-[12px] text-muted">{order.address}</p>}
+                {order.customerPhone && (
+                  <a
+                    href={`https://wa.me/51${order.customerPhone}?text=${encodeURIComponent(`Hola ${order.customerName}, te escribimos de MariArte por tu pedido ${order.code}.`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="link-underline mt-0.5 inline-block text-[12px] font-semibold text-rose-deep"
+                  >
+                    Escribir a {order.customerPhone}
+                  </a>
+                )}
               </td>
               {!compact && (
                 <td className="px-4 py-3.5 text-[12.5px] text-muted">

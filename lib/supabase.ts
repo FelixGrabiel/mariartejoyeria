@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { normalizePhone, type Customer } from "@/lib/customer";
 import type { CartItem, CategoryId, MaterialType, MeaningTheme, Order, OrderStatus, PackagingOption, Product, StockMovement } from "@/types";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -81,7 +82,7 @@ export async function fetchAdminData(): Promise<{ products: Product[]; orders: O
     supabase.from("products").select("*, product_variants(sku,label,stock,sort_order), product_themes(theme_id)").order("created_at", { ascending: false }),
     supabase
       .from("orders")
-      .select("id,code,customer_name,district,channel,status,created_at,order_items(product_id,product_name,variant_label,quantity,unit_price,occasion,packaging_name,packaging_price,dedication,meaning_card)")
+      .select("id,code,customer_name,customer_phone,address,district,channel,status,created_at,order_items(product_id,product_name,variant_label,quantity,unit_price,occasion,packaging_name,packaging_price,dedication,meaning_card)")
       .order("created_at", { ascending: false })
       .order("code", { ascending: false }),
     supabase.from("inventory_movements").select("*").order("date", { ascending: false }).order("id", { ascending: false }),
@@ -93,6 +94,8 @@ export async function fetchAdminData(): Promise<{ products: Product[]; orders: O
       id: r.id,
       code: r.code,
       customerName: r.customer_name,
+      customerPhone: r.customer_phone ?? undefined,
+      address: r.address || undefined,
       district: r.district,
       channel: r.channel,
       status: r.status,
@@ -213,9 +216,14 @@ export async function dbSetStock(sku: string, stock: number, movement: StockMove
 /** Registra el pedido en la base (precio y stock se validan en el servidor). Devuelve el código o un error. */
 export async function dbCreateOrder(
   items: CartItem[],
+  customer: Customer,
 ): Promise<{ code: string } | { error: string }> {
   if (!supabase) return { error: "Supabase no está configurado." };
   const { data, error } = await supabase.rpc("create_order", {
+    p_customer_name: customer.name.trim(),
+    p_phone: normalizePhone(customer.phone),
+    p_district: customer.district.trim(),
+    p_address: customer.address.trim(),
     p_items: items.map((i) => ({
       product_id: i.productId,
       sku: i.sku,
@@ -319,4 +327,19 @@ export async function dbSaveDedicationMax(value: number): Promise<DbResult> {
   if (!supabase) return "Supabase no está configurado.";
   const { error } = await supabase.from("store_settings").upsert({ key: "dedication_max_chars", value: String(value) });
   return error?.message ?? null;
+}
+
+export interface TrackedOrder {
+  code: string;
+  status: OrderStatus;
+  created_at: string;
+  items: { name: string; variant: string; quantity: number; occasion: string | null; packaging: string | null }[];
+}
+
+/** Seguimiento público: exige el código y el celular del pedido. Devuelve null si no coinciden. */
+export async function dbTrackOrder(code: string, phone: string): Promise<{ order: TrackedOrder | null } | { error: string }> {
+  if (!supabase) return { error: "El seguimiento no está disponible en modo demostración." };
+  const { data, error } = await supabase.rpc("track_order", { p_code: code.trim(), p_phone: normalizePhone(phone) });
+  if (error) return { error: error.message };
+  return { order: (data as TrackedOrder | null) ?? null };
 }
