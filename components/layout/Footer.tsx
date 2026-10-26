@@ -13,6 +13,8 @@ const columns = [
       { href: "/catalogo?categoria=sets", label: "Sets para compartir" },
       { href: "/catalogo?categoria=regalos", label: "Regalos" },
       { href: "/regalo", label: "Arma tu regalo" },
+      { href: "/combos", label: "Combina y ahorra" },
+      { href: "/asistente", label: "Encuentra tu joya ideal" },
       { href: "/favoritos", label: "Favoritos" },
       { href: "/pedido", label: "Sigue tu pedido" },
     ],

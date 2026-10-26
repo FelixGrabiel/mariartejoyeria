@@ -24,9 +24,11 @@ import { initialProducts } from "@/data/products";
 import { todayISO } from "@/lib/format";
 import {
   checkIsAdmin,
+  dbDeleteCombo,
   dbDeletePackaging,
   dbDeleteProduct,
   dbDeleteTheme,
+  dbSaveCombo,
   dbSaveDedicationMax,
   dbSavePackaging,
   dbSaveProduct,
@@ -36,14 +38,19 @@ import {
   dbUpdateOrderStatus,
   fetchAdminData,
   fetchCatalog,
+  fetchCombos,
   fetchStoreConfig,
   supabase,
 } from "@/lib/supabase";
 import { STORAGE_KEYS, readStorage, removeStorage, writeStorage } from "@/lib/storage";
+import { comboTotals, discountedPrice, isComboLive } from "@/lib/combo";
 import { DEFAULT_DEDICATION_MAX, sameLine, unitsForSku } from "@/lib/gift";
 import type {
   CartItem,
   CartLine,
+  Combo,
+  ComboCartItem,
+  ComboLine,
   GiftOptions,
   MeaningTheme,
   Order,
@@ -75,6 +82,17 @@ interface StoreContextValue {
   addToCart: (productId: string, sku: string, quantity: number, gift?: GiftOptions) => ActionResult;
   updateQuantity: (productId: string, sku: string, quantity: number, gift?: GiftOptions) => void;
   removeFromCart: (productId: string, sku: string, gift?: GiftOptions) => void;
+
+  /** Combos: con sesión de administrador incluyen pausados y programados; `liveCombos` solo los vigentes. */
+  combos: Combo[];
+  liveCombos: Combo[];
+  comboCart: ComboCartItem[];
+  comboLines: ComboLine[];
+  addComboToCart: (comboId: string, picks: string[], quantity: number) => ActionResult;
+  updateComboQuantity: (index: number, quantity: number) => void;
+  removeCombo: (index: number) => void;
+  saveCombo: (combo: Combo) => void;
+  deleteCombo: (id: string) => void;
 
   /** Empaques y temas: con sesión de administrador incluyen los inactivos. */
   packaging: PackagingOption[];
@@ -115,6 +133,8 @@ interface StoreContextValue {
 
 const StoreContext = createContext<StoreContextValue | null>(null);
 
+const COMBO_CART_KEY = "mariarte.v1.comboCart";
+
 function movementId(): string {
   return `m-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 }
@@ -136,6 +156,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [themes, setThemes] = useState<MeaningTheme[]>([]);
   const [dedicationMax, setDedicationMax] = useState(DEFAULT_DEDICATION_MAX);
   const [configLoaded, setConfigLoaded] = useState(!supabase);
+  const [combos, setCombos] = useState<Combo[]>([]);
+  const [comboCart, setComboCart] = useState<ComboCartItem[]>([]);
 
   const loadConfig = useCallback(async () => {
     const config = await fetchStoreConfig();
@@ -144,6 +166,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setThemes(config.themes);
     setDedicationMax(config.dedicationMax);
     setConfigLoaded(true);
+    const remoteCombos = await fetchCombos();
+    if (remoteCombos) setCombos(remoteCombos);
   }, []);
 
   // Carga inicial desde localStorage (solo en el navegador).
@@ -152,6 +176,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setCart(readStorage<CartItem[]>(STORAGE_KEYS.cart, []));
     setFavorites(readStorage<string[]>(STORAGE_KEYS.favorites, []));
     setGiftNote(readStorage(STORAGE_KEYS.giftNote, ""));
+    setComboCart(readStorage<ComboCartItem[]>(COMBO_CART_KEY, []));
     setOrders(readStorage(STORAGE_KEYS.orders, initialOrders));
     setMovements(readStorage(STORAGE_KEYS.movements, initialMovements));
     setHydrated(true);
@@ -279,6 +304,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (hydrated) writeStorage(STORAGE_KEYS.cart, cart);
   }, [cart, hydrated]);
   useEffect(() => {
+    if (hydrated) writeStorage(COMBO_CART_KEY, comboCart);
+  }, [comboCart, hydrated]);
+  useEffect(() => {
     if (hydrated) writeStorage(STORAGE_KEYS.favorites, favorites);
   }, [favorites, hydrated]);
   useEffect(() => {
@@ -298,6 +326,74 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [products],
   );
 
+  const liveCombos = useMemo(() => combos.filter((c) => isComboLive(c)), [combos]);
+
+  /** Unidades de un SKU ya reservadas en el carrito (productos sueltos + componentes de combos). */
+  const unitsInCart = useCallback(
+    (sku: string, skipCombo = -1) => {
+      let total = unitsForSku(cart, sku);
+      comboCart.forEach((ci, idx) => {
+        if (idx === skipCombo) return;
+        const combo = combos.find((c) => c.id === ci.comboId);
+        combo?.items.forEach((it, i) => {
+          if ((it.sku ?? ci.picks[i]) === sku) total += it.quantity * ci.quantity;
+        });
+      });
+      return total;
+    },
+    [cart, comboCart, combos],
+  );
+
+  const comboLines = useMemo<ComboLine[]>(() => {
+    const lines: ComboLine[] = [];
+    comboCart.forEach((item) => {
+      const combo = combos.find((c) => c.id === item.comboId);
+      if (!combo) {
+        if (configLoaded) {
+          // El combo ya no existe o venció: se muestra como línea con aviso para que el cliente la quite.
+          lines.push({
+            item,
+            combo: { id: item.comboId, name: "Combo no disponible", description: "", discountPercent: 0, active: false, maxPerOrder: 1, sortOrder: 0, items: [] },
+            components: [],
+            regular: 0,
+            total: 0,
+            savings: 0,
+            issue: "Este combo ya no está disponible.",
+          });
+        }
+        return;
+      }
+      let issue: string | undefined;
+      if (!isComboLive(combo)) issue = "Este combo ya no está vigente.";
+      else if (item.quantity > combo.maxPerOrder) issue = `Máximo ${combo.maxPerOrder} por pedido.`;
+      const components: ComboLine["components"] = [];
+      combo.items.forEach((it, i) => {
+        const sku = it.sku ?? item.picks[i];
+        const product = products.find((p) => p.id === it.productId);
+        const variant = product?.variants.find((v) => v.sku === sku);
+        if (!product || !variant) {
+          issue = issue ?? "Falta elegir una opción o un producto del combo ya no existe.";
+          return;
+        }
+        if (!product.active) issue = issue ?? `${product.name} ya no está disponible.`;
+        else if (variant.stock <= 0) issue = issue ?? `${product.name} (${variant.label}) se agotó.`;
+        else if (unitsInCart(sku) > variant.stock) issue = issue ?? `Solo quedan ${variant.stock} unidad(es) de ${product.name} (${variant.label}).`;
+        components.push({ product, variant, quantity: it.quantity, unitPrice: discountedPrice(product.price, combo.discountPercent) });
+      });
+      const totals = comboTotals(components.map((c) => ({ price: c.product.price, quantity: c.quantity })), combo.discountPercent);
+      lines.push({
+        item,
+        combo,
+        components,
+        regular: totals.regular * item.quantity,
+        total: Math.round(totals.total * item.quantity * 100) / 100,
+        savings: Math.round(totals.savings * item.quantity * 100) / 100,
+        issue,
+      });
+    });
+    return lines;
+  }, [comboCart, combos, products, configLoaded, unitsInCart]);
+
   const cartLines = useMemo<CartLine[]>(() => {
     const lines: CartLine[] = [];
     for (const item of cart) {
@@ -306,7 +402,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!product || !variant) continue;
       const pack = item.gift?.packagingId ? packaging.find((o) => o.id === item.gift?.packagingId && o.active) : undefined;
       const packUnit = pack?.price ?? 0;
-      const totalUnits = unitsForSku(cart, item.sku);
+      const totalUnits = unitsInCart(item.sku);
       let issue: string | undefined;
       if (!product.active) issue = "Esta joya ya no está disponible en la tienda.";
       else if (variant.stock === 0) issue = "Esta opción se agotó.";
@@ -324,12 +420,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       });
     }
     return lines;
-  }, [cart, products, packaging, configLoaded]);
+  }, [cart, products, packaging, configLoaded, unitsInCart]);
 
-  const cartCount = useMemo(() => cart.reduce((sum, i) => sum + i.quantity, 0), [cart]);
+  const cartCount = useMemo(
+    () => cart.reduce((sum, i) => sum + i.quantity, 0) + comboCart.reduce((sum, i) => sum + i.quantity, 0),
+    [cart, comboCart],
+  );
   const cartSubtotal = useMemo(
-    () => cartLines.filter((l) => !l.issue).reduce((sum, l) => sum + l.lineTotal, 0),
-    [cartLines],
+    () =>
+      Math.round(
+        (cartLines.filter((l) => !l.issue).reduce((sum, l) => sum + l.lineTotal, 0) +
+          comboLines.filter((l) => !l.issue).reduce((sum, l) => sum + l.total, 0)) *
+          100,
+      ) / 100,
+    [cartLines, comboLines],
   );
 
   const addToCart = useCallback(
@@ -345,7 +449,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (gift && !product.giftEnabled) {
         return { ok: false, message: "Esta joya no admite personalización de regalo." };
       }
-      const inCart = unitsForSku(cart, sku);
+      const inCart = unitsInCart(sku);
       if (inCart + quantity > variant.stock) {
         const left = Math.max(0, variant.stock - inCart);
         return {
@@ -364,19 +468,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       });
       return { ok: true, message: gift ? `Regalo con ${product.name} agregado al carrito.` : `${product.name} se agregó al carrito.` };
     },
-    [cart, products],
+    [cart, products, unitsInCart],
   );
 
   const updateQuantity = useCallback(
     (productId: string, sku: string, quantity: number, gift?: GiftOptions) => {
       const variant = products.find((p) => p.id === productId)?.variants.find((v) => v.sku === sku);
       const target = { productId, sku, gift };
-      const others = cart.filter((i) => i.sku === sku && !sameLine(i, target)).reduce((sum, i) => sum + i.quantity, 0);
+      const own = cart.find((i) => sameLine(i, target))?.quantity ?? 0;
+      const others = unitsInCart(sku) - own;
       const max = Math.max(1, (variant?.stock ?? 1) - others);
       const next = Math.min(Math.max(1, Math.round(quantity)), max);
       setCart((list) => list.map((i) => (sameLine(i, target) ? { ...i, quantity: next } : i)));
     },
-    [products, cart],
+    [products, cart, unitsInCart],
   );
 
   const removeFromCart = useCallback((productId: string, sku: string, gift?: GiftOptions) => {
@@ -384,7 +489,82 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setCart((list) => list.filter((i) => !sameLine(i, target)));
   }, []);
 
-  const clearCart = useCallback(() => setCart([]), []);
+  const clearCart = useCallback(() => {
+    setCart([]);
+    setComboCart([]);
+  }, []);
+
+  const addComboToCart = useCallback(
+    (comboId: string, picks: string[], quantity: number): ActionResult => {
+      const combo = combos.find((c) => c.id === comboId);
+      if (!combo || !isComboLive(combo)) return { ok: false, message: "Este combo no está disponible." };
+      if (combo.items.length === 0) return { ok: false, message: "Este combo no tiene productos." };
+      const needed = new Map<string, number>();
+      for (let i = 0; i < combo.items.length; i += 1) {
+        const it = combo.items[i];
+        const sku = it.sku ?? picks[i];
+        const product = products.find((p) => p.id === it.productId);
+        const variant = product?.variants.find((v) => v.sku === sku);
+        if (!sku) return { ok: false, message: "Elige una opción para cada producto del combo." };
+        if (!product || !product.active || !variant) return { ok: false, message: "Un producto del combo no está disponible." };
+        needed.set(sku, (needed.get(sku) ?? 0) + it.quantity * quantity);
+      }
+      for (const [sku, units] of needed) {
+        const variant = products.flatMap((p) => p.variants).find((v) => v.sku === sku);
+        if (!variant || unitsInCart(sku) + units > variant.stock) {
+          return { ok: false, message: `No hay stock suficiente de «${variant?.label ?? sku}» para este combo.` };
+        }
+      }
+      const resolved = combo.items.map((it, i) => it.sku ?? picks[i]);
+      const same = (c: ComboCartItem) => c.comboId === comboId && c.picks.join("|") === resolved.join("|");
+      const inCart = comboCart.find(same)?.quantity ?? 0;
+      if (inCart + quantity > combo.maxPerOrder) {
+        return { ok: false, message: `Máximo ${combo.maxPerOrder} de este combo por pedido.` };
+      }
+      setComboCart((list) =>
+        list.some(same)
+          ? list.map((c) => (same(c) ? { ...c, quantity: c.quantity + quantity } : c))
+          : [...list, { comboId, picks: resolved, quantity }],
+      );
+      return { ok: true, message: `Combo «${combo.name}» agregado al carrito.` };
+    },
+    [combos, products, comboCart, unitsInCart],
+  );
+
+  const updateComboQuantity = useCallback(
+    (index: number, quantity: number) => {
+      const item = comboCart[index];
+      const combo = item && combos.find((c) => c.id === item.comboId);
+      if (!item || !combo) return;
+      let max = combo.maxPerOrder;
+      combo.items.forEach((it, i) => {
+        const sku = it.sku ?? item.picks[i];
+        const variant = products.flatMap((p) => p.variants).find((v) => v.sku === sku);
+        if (variant) max = Math.min(max, Math.floor((variant.stock - unitsInCart(sku, index)) / it.quantity));
+      });
+      const next = Math.min(Math.max(1, Math.round(quantity)), Math.max(1, max));
+      setComboCart((list) => list.map((c, i) => (i === index ? { ...c, quantity: next } : c)));
+    },
+    [comboCart, combos, products, unitsInCart],
+  );
+
+  const removeCombo = useCallback((index: number) => setComboCart((list) => list.filter((_, i) => i !== index)), []);
+
+  const saveCombo = useCallback(
+    (combo: Combo) => {
+      setCombos((list) => (list.some((c) => c.id === combo.id) ? list.map((c) => (c.id === combo.id ? combo : c)) : [...list, combo]));
+      if (isAdmin) persist(dbSaveCombo(combo), true);
+    },
+    [isAdmin, persist],
+  );
+  const deleteCombo = useCallback(
+    (id: string) => {
+      setCombos((list) => list.filter((c) => c.id !== id));
+      setComboCart((list) => list.filter((c) => c.comboId !== id));
+      if (isAdmin) persist(dbDeleteCombo(id), true);
+    },
+    [isAdmin, persist],
+  );
 
   const isFavorite = useCallback((productId: string) => favorites.includes(productId), [favorites]);
 
@@ -536,6 +716,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setOrders(initialOrders);
     setMovements(initialMovements);
     setCart([]);
+    setComboCart([]);
     setFavorites([]);
     setGiftNote("");
   }, []);
@@ -552,6 +733,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     addToCart,
     updateQuantity,
     removeFromCart,
+    combos,
+    liveCombos,
+    comboCart,
+    comboLines,
+    addComboToCart,
+    updateComboQuantity,
+    removeCombo,
+    saveCombo,
+    deleteCombo,
     packaging,
     themes,
     activePackaging,

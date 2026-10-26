@@ -1,5 +1,5 @@
 import { site } from "@/data/site";
-import type { CartLine, Product, ProductVariant } from "@/types";
+import type { CartLine, ComboLine, Product, ProductVariant } from "@/types";
 import type { Customer } from "./customer";
 import { formatPrice } from "./format";
 
@@ -12,9 +12,11 @@ export function whatsappUrl(message?: string): string {
   return message ? `${base}?text=${encodeURIComponent(message)}` : base;
 }
 
-export function buildOrderMessage(lines: CartLine[], giftNote?: string, customer?: Customer, orderCode?: string): string {
+export function buildOrderMessage(lines: CartLine[], giftNote?: string, customer?: Customer, orderCode?: string, comboLines: ComboLine[] = []): string {
   const valid = lines.filter((l) => !l.issue);
-  const subtotal = valid.reduce((sum, l) => sum + l.lineTotal, 0);
+  const validCombos = comboLines.filter((l) => !l.issue);
+  const subtotal =
+    valid.reduce((sum, l) => sum + l.lineTotal, 0) + validCombos.reduce((sum, l) => sum + l.total, 0);
 
   const body = valid
     .map((l, i) => {
@@ -38,11 +40,19 @@ export function buildOrderMessage(lines: CartLine[], giftNote?: string, customer
     })
     .join("\n");
 
+  const comboBody = validCombos
+    .map((l, i) => {
+      const head = `${valid.length + i + 1}. COMBO · ${l.combo.name} (x${l.item.quantity})${l.combo.discountPercent > 0 ? ` · ${l.combo.discountPercent}% menos` : ""}`;
+      const parts = l.components.map((c) => `   - ${c.quantity * l.item.quantity}x ${c.product.name} (${c.variant.label}) · SKU: ${c.variant.sku}`);
+      return [head, ...parts, `   Total del combo: ${formatPrice(l.total)}${l.savings > 0 ? ` (ahorro ${formatPrice(l.savings)})` : ""}`].join("\n");
+    })
+    .join("\n");
+
   const parts = [
     ...(orderCode ? [`Pedido web ${orderCode}`, ""] : []),
     "Hola, MariArte. Quisiera solicitar este pedido (queda pendiente de tu confirmación):",
     "",
-    body,
+    [body, comboBody].filter(Boolean).join("\n"),
     "",
     `Subtotal referencial: ${formatPrice(subtotal)}`,
     "Envío por confirmar.",

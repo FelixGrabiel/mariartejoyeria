@@ -9,10 +9,11 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { ConfirmModal } from "@/components/ui/Modal";
 import { Skeleton } from "@/components/ui/misc";
 import { CartItem } from "./CartItem";
+import { ComboCartLine } from "./ComboCartLine";
 import { CartSummary } from "./CartSummary";
 
 export function CartView() {
-  const { hydrated, cartLines, giftNote, setGiftNote, clearCart } = useStore();
+  const { hydrated, cartLines, comboLines, comboCart, giftNote, setGiftNote, clearCart } = useStore();
   const [confirmClear, setConfirmClear] = useState(false);
 
   if (!hydrated) {
@@ -27,7 +28,7 @@ export function CartView() {
     );
   }
 
-  if (cartLines.length === 0) {
+  if (cartLines.length === 0 && comboLines.length === 0) {
     return (
       <div className="container-page">
         <EmptyState
@@ -65,6 +66,9 @@ export function CartView() {
           <ul className="divide-y divide-line border-y border-line">
             {cartLines.map((line) => (
               <CartItem key={`${line.product.id}-${line.variant.sku}-${giftKey(line.item.gift)}`} line={line} />
+            ))}
+            {comboLines.map((line) => (
+              <ComboCartLine key={`${line.item.comboId}-${line.item.picks.join("|")}`} line={line} index={comboCart.indexOf(line.item)} />
             ))}
           </ul>
 

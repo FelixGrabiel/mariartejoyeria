@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { normalizePhone, type Customer } from "@/lib/customer";
-import type { CartItem, CategoryId, MaterialType, MeaningTheme, Order, OrderStatus, PackagingOption, Product, StockMovement } from "@/types";
+import type { CartItem, Combo, ComboCartItem, CategoryId, MaterialType, MeaningTheme, Order, OrderStatus, PackagingOption, Product, StockMovement } from "@/types";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -26,8 +26,9 @@ interface ProductRow {
   created_at: string;
   gift_enabled: boolean;
   meaning: string | null;
+  styles: string[] | null;
   product_themes: { theme_id: string }[];
-  product_variants: { sku: string; label: string; stock: number; sort_order: number }[];
+  product_variants: { sku: string; label: string; stock: number; sort_order: number; min_stock: number }[];
 }
 
 /** Catálogo público (solo productos activos, por RLS). Devuelve null si falla. */
@@ -35,7 +36,7 @@ export async function fetchCatalog(): Promise<Product[] | null> {
   if (!supabase) return null;
   const { data, error } = await supabase
     .from("products")
-    .select("*, product_variants(sku,label,stock,sort_order), product_themes(theme_id)")
+    .select("*, product_variants(sku,label,stock,sort_order,min_stock), product_themes(theme_id)")
     .order("created_at", { ascending: false });
   if (error || !data) return null;
   return (data as ProductRow[]).map(rowToProduct);
@@ -63,9 +64,10 @@ function rowToProduct(r: ProductRow): Product {
     giftEnabled: r.gift_enabled,
     meaning: r.meaning ?? undefined,
     themeIds: (r.product_themes ?? []).map((t) => t.theme_id),
+    styles: r.styles ?? [],
     variants: [...r.product_variants]
       .sort((a, b) => a.sort_order - b.sort_order)
-      .map(({ sku, label, stock }) => ({ sku, label, stock })),
+      .map(({ sku, label, stock, min_stock }) => ({ sku, label, stock, minStock: min_stock })),
   };
 }
 
@@ -79,10 +81,10 @@ export async function checkIsAdmin(userId: string): Promise<boolean> {
 export async function fetchAdminData(): Promise<{ products: Product[]; orders: Order[]; movements: StockMovement[] } | null> {
   if (!supabase) return null;
   const [p, o, m] = await Promise.all([
-    supabase.from("products").select("*, product_variants(sku,label,stock,sort_order), product_themes(theme_id)").order("created_at", { ascending: false }),
+    supabase.from("products").select("*, product_variants(sku,label,stock,sort_order,min_stock), product_themes(theme_id)").order("created_at", { ascending: false }),
     supabase
       .from("orders")
-      .select("id,code,customer_name,customer_phone,address,district,channel,status,created_at,order_items(product_id,product_name,variant_label,quantity,unit_price,occasion,packaging_name,packaging_price,dedication,meaning_card)")
+      .select("id,code,customer_name,customer_phone,address,district,channel,status,created_at,order_items(product_id,product_name,variant_label,quantity,unit_price,occasion,packaging_name,packaging_price,dedication,meaning_card,combo_name,combo_group)")
       .order("created_at", { ascending: false })
       .order("code", { ascending: false }),
     supabase.from("inventory_movements").select("*").order("date", { ascending: false }).order("id", { ascending: false }),
@@ -111,6 +113,8 @@ export async function fetchAdminData(): Promise<{ products: Product[]; orders: O
         packaging_price: number | string;
         dedication: string | null;
         meaning_card: boolean;
+        combo_name: string | null;
+        combo_group: number | null;
       }) => ({
         productId: i.product_id ?? "",
         productName: i.product_name,
@@ -122,6 +126,8 @@ export async function fetchAdminData(): Promise<{ products: Product[]; orders: O
         packagingPrice: Number(i.packaging_price),
         dedication: i.dedication ?? undefined,
         meaningCard: i.meaning_card || undefined,
+        comboName: i.combo_name ?? undefined,
+        comboGroup: i.combo_group ?? undefined,
       })),
     })),
     movements: (m.data ?? []).map((r) => ({
@@ -159,6 +165,7 @@ export async function dbSaveProduct(product: Product, movements: StockMovement[]
     created_at: product.createdAt.slice(0, 10),
     gift_enabled: !!product.giftEnabled,
     meaning: product.meaning?.trim() || null,
+    styles: product.styles ?? [],
   });
   if (error) return error.message;
   const themes = product.themeIds ?? [];
@@ -172,7 +179,7 @@ export async function dbSaveProduct(product: Product, movements: StockMovement[]
   const del = await supabase.from("product_variants").delete().eq("product_id", product.id).not("sku", "in", `(${skus.map((s) => `"${s}"`).join(",")})`);
   if (del.error) return del.error.message;
   const up = await supabase.from("product_variants").upsert(
-    product.variants.map((v, i) => ({ sku: v.sku, product_id: product.id, label: v.label, stock: v.stock, sort_order: i + 1 })),
+    product.variants.map((v, i) => ({ sku: v.sku, product_id: product.id, label: v.label, stock: v.stock, sort_order: i + 1, min_stock: v.minStock ?? 2 })),
   );
   if (up.error) return up.error.message;
   return dbInsertMovements(movements);
@@ -217,9 +224,10 @@ export async function dbSetStock(sku: string, stock: number, movement: StockMove
 export async function dbCreateOrder(
   items: CartItem[],
   customer: Customer,
+  combos: ComboCartItem[] = [],
 ): Promise<{ code: string } | { error: string }> {
   if (!supabase) return { error: "Supabase no está configurado." };
-  const { data, error } = await supabase.rpc("create_order", {
+  const { data, error } = await supabase.rpc("place_order", {
     p_customer_name: customer.name.trim(),
     p_phone: normalizePhone(customer.phone),
     p_district: customer.district.trim(),
@@ -232,6 +240,7 @@ export async function dbCreateOrder(
         ? { occasion: i.gift.occasion, packaging_id: i.gift.packagingId ?? "", dedication: i.gift.dedication, meaning_card: i.gift.meaningCard }
         : undefined,
     })),
+    p_combos: combos.map((c) => ({ combo_id: c.comboId, quantity: c.quantity, picks: c.picks })),
   });
   if (error) return { error: error.message };
   return { code: String(data) };
@@ -333,7 +342,7 @@ export interface TrackedOrder {
   code: string;
   status: OrderStatus;
   created_at: string;
-  items: { name: string; variant: string; quantity: number; occasion: string | null; packaging: string | null }[];
+  items: { name: string; variant: string; quantity: number; occasion: string | null; packaging: string | null; combo?: string | null }[];
 }
 
 /** Seguimiento público: exige el código y el celular del pedido. Devuelve null si no coinciden. */
@@ -342,4 +351,68 @@ export async function dbTrackOrder(code: string, phone: string): Promise<{ order
   const { data, error } = await supabase.rpc("track_order", { p_code: code.trim(), p_phone: normalizePhone(phone) });
   if (error) return { error: error.message };
   return { order: (data as TrackedOrder | null) ?? null };
+}
+
+// ---------- Combos ----------
+
+interface ComboRow {
+  id: string;
+  name: string;
+  description: string;
+  discount_percent: number;
+  active: boolean;
+  starts_at: string | null;
+  ends_at: string | null;
+  max_per_order: number;
+  sort_order: number;
+  combo_items: { product_id: string; sku: string | null; quantity: number; position: number; id: number }[];
+}
+
+/** Con sesión de administrador devuelve también pausados y programados (por RLS); sin sesión, solo los vigentes. */
+export async function fetchCombos(): Promise<Combo[] | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase.from("combos").select("*, combo_items(id,product_id,sku,quantity,position)").order("sort_order");
+  if (error || !data) return null;
+  return (data as ComboRow[]).map((r) => ({
+    id: r.id,
+    name: r.name,
+    description: r.description,
+    discountPercent: r.discount_percent,
+    active: r.active,
+    startsAt: r.starts_at ?? undefined,
+    endsAt: r.ends_at ?? undefined,
+    maxPerOrder: r.max_per_order,
+    sortOrder: r.sort_order,
+    items: [...r.combo_items]
+      .sort((a, b) => a.position - b.position || a.id - b.id)
+      .map((i) => ({ productId: i.product_id, sku: i.sku ?? undefined, quantity: i.quantity })),
+  }));
+}
+
+export async function dbSaveCombo(combo: Combo): Promise<DbResult> {
+  if (!supabase) return "Supabase no está configurado.";
+  const { error } = await supabase.from("combos").upsert({
+    id: combo.id,
+    name: combo.name,
+    description: combo.description,
+    discount_percent: combo.discountPercent,
+    active: combo.active,
+    starts_at: combo.startsAt || null,
+    ends_at: combo.endsAt || null,
+    max_per_order: combo.maxPerOrder,
+    sort_order: combo.sortOrder,
+  });
+  if (error) return error.message;
+  const del = await supabase.from("combo_items").delete().eq("combo_id", combo.id);
+  if (del.error) return del.error.message;
+  const ins = await supabase.from("combo_items").insert(
+    combo.items.map((i, idx) => ({ combo_id: combo.id, product_id: i.productId, sku: i.sku || null, quantity: i.quantity, position: idx + 1 })),
+  );
+  return ins.error?.message ?? null;
+}
+
+export async function dbDeleteCombo(id: string): Promise<DbResult> {
+  if (!supabase) return "Supabase no está configurado.";
+  const { error } = await supabase.from("combos").delete().eq("id", id);
+  return error?.message ?? null;
 }

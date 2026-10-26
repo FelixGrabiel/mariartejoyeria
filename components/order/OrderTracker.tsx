@@ -114,6 +114,7 @@ export function OrderTracker() {
             {order.items.map((i, idx) => (
               <li key={idx} className="py-2.5">
                 {i.quantity}× {i.name} · {i.variant}
+                {i.combo && <span className="block text-[12.5px] text-muted">Combo · {i.combo}</span>}
                 {(i.occasion || i.packaging) && (
                   <span className="block text-[12.5px] text-muted">
                     Regalo{i.occasion ? ` · ${i.occasion}` : ""}

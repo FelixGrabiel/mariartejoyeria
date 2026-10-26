@@ -5,7 +5,7 @@ import { initialProducts } from "@/data/products";
 export const revalidate = 300;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const fixed = ["", "/catalogo", "/regalo", "/nosotros", "/contacto", "/politicas", "/pedido"].map((path) => ({
+  const fixed = ["", "/catalogo", "/regalo", "/combos", "/asistente", "/nosotros", "/contacto", "/politicas", "/pedido"].map((path) => ({
     url: `${SITE_URL}${path}`,
     changeFrequency: "weekly" as const,
     priority: path === "" ? 1 : 0.7,

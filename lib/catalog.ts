@@ -52,10 +52,11 @@ export function firstAvailableVariant(product: Product): ProductVariant | undefi
   return product.variants.find((v) => v.stock > 0);
 }
 
+/** Variantes con stock igual o menor a su mínimo configurable (por defecto 2). */
 export function lowStockVariants(products: Product[], threshold = 2) {
   return products.flatMap((p) =>
     p.variants
-      .filter((v) => v.stock <= threshold)
+      .filter((v) => v.stock <= (v.minStock ?? threshold))
       .map((v) => ({ product: p, variant: v })),
   );
 }

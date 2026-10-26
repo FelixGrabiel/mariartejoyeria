@@ -1,5 +1,7 @@
 import { FeaturedProducts } from "@/components/home/FeaturedProducts";
 import { HeroSection } from "@/components/home/HeroSection";
+import { ComboSection } from "@/components/home/ComboSection";
+import { FinderCta } from "@/components/home/FinderCta";
 import { MeaningSection } from "@/components/home/MeaningSection";
 import {
   BenefitsSection,
@@ -18,6 +20,8 @@ export default function HomePage() {
       <FeaturedProducts />
       <GiftSection />
       <MeaningSection />
+      <ComboSection />
+      <FinderCta />
       <BenefitsSection />
       <StoryTeaser />
       <TestimonialsSection />

@@ -11,16 +11,20 @@ import { ChevronDown, Info } from "@/components/ui/icons";
 import { WhatsAppCheckoutButton } from "./WhatsAppCheckoutButton";
 
 export function CartSummary() {
-  const { cartLines, cartSubtotal, giftNote } = useStore();
+  const { cartLines, comboLines, cartSubtotal, giftNote } = useStore();
   const valid = cartLines.filter((l) => !l.issue);
-  const units = valid.reduce((sum, l) => sum + l.item.quantity, 0);
-  const hasIssues = cartLines.some((l) => l.issue);
+  const validCombos = comboLines.filter((l) => !l.issue);
+  const units =
+    valid.reduce((sum, l) => sum + l.item.quantity, 0) +
+    validCombos.reduce((sum, l) => sum + l.components.reduce((s, c) => s + c.quantity, 0) * l.item.quantity, 0);
+  const hasIssues = cartLines.some((l) => l.issue) || comboLines.some((l) => l.issue);
+  const totalSavings = validCombos.reduce((sum, l) => sum + l.savings, 0);
   const [customer, setCustomer] = useState<Customer>(emptyCustomer);
   const [touched, setTouched] = useState(false);
   const needsContact = Boolean(supabase);
   const errors = validateCustomer(customer);
   const contactOk = !needsContact || isCustomerValid(customer);
-  const message = buildOrderMessage(cartLines, giftNote, needsContact ? customer : undefined);
+  const message = buildOrderMessage(cartLines, giftNote, needsContact ? customer : undefined, undefined, comboLines);
 
   useEffect(() => {
     setCustomer(readStorage<Customer>("mariarte.v1.customer", emptyCustomer));
@@ -41,6 +45,12 @@ export function CartSummary() {
           <dt className="text-muted">Subtotal ({units} {units === 1 ? "pieza" : "piezas"})</dt>
           <dd className="font-semibold tabular-nums">{formatPrice(cartSubtotal)}</dd>
         </div>
+        {totalSavings > 0 && (
+          <div className="flex justify-between text-success">
+            <dt>Ahorro en combos</dt>
+            <dd className="font-semibold tabular-nums">- {formatPrice(totalSavings)}</dd>
+          </div>
+        )}
         <div className="flex justify-between">
           <dt className="text-muted">Envío</dt>
           <dd className="font-medium text-rose-deep">Por confirmar</dd>
@@ -76,11 +86,12 @@ export function CartSummary() {
         <WhatsAppCheckoutButton
           message={message}
           items={valid.map((l) => l.item)}
+          combos={validCombos.map((l) => l.item)}
           customer={customer}
-          buildMessage={(code) => buildOrderMessage(cartLines, giftNote, customer, code)}
-          disabled={valid.length === 0 || !contactOk}
+          buildMessage={(code) => buildOrderMessage(cartLines, giftNote, customer, code, comboLines)}
+          disabled={(valid.length === 0 && validCombos.length === 0) || !contactOk}
         />
-        {valid.length > 0 && !contactOk && <p className="mt-2 text-center text-[12px] text-muted">Completa tus datos para enviar el pedido.</p>}
+        {(valid.length > 0 || validCombos.length > 0) && !contactOk && <p className="mt-2 text-center text-[12px] text-muted">Completa tus datos para enviar el pedido.</p>}
       </div>
 
       <p className="mt-4 flex gap-2 text-[12.5px] leading-snug text-muted">

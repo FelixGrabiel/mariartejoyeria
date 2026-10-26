@@ -6,7 +6,7 @@ import { cn } from "@/lib/format";
 import { dbCreateOrder, supabase } from "@/lib/supabase";
 import { whatsappUrl } from "@/lib/whatsapp";
 import type { Customer } from "@/lib/customer";
-import type { CartItem } from "@/types";
+import type { CartItem, ComboCartItem } from "@/types";
 import { MessageCircle } from "@/components/ui/icons";
 
 /**
@@ -16,6 +16,7 @@ import { MessageCircle } from "@/components/ui/icons";
 export function WhatsAppCheckoutButton({
   message,
   items,
+  combos,
   customer,
   buildMessage,
   disabled = false,
@@ -25,6 +26,7 @@ export function WhatsAppCheckoutButton({
   message: string;
   /** Productos del carrito: si hay Supabase, el pedido se registra antes de abrir WhatsApp. */
   items?: CartItem[];
+  combos?: ComboCartItem[];
   /** Datos de contacto: obligatorios para registrar el pedido. */
   customer?: Customer;
   /** Arma el texto final de WhatsApp una vez que se conoce el código del pedido. */
@@ -37,7 +39,7 @@ export function WhatsAppCheckoutButton({
   const [busy, setBusy] = useState(false);
 
   async function placeOrderAndOpen(event: MouseEvent<HTMLAnchorElement>) {
-    if (!supabase || !items?.length) {
+    if (!supabase || (!items?.length && !combos?.length)) {
       showToast("Abrimos WhatsApp con tu pedido. Revísalo y envíalo cuando quieras.", { tone: "info" });
       return;
     }
@@ -46,7 +48,7 @@ export function WhatsAppCheckoutButton({
     setBusy(true);
     // Se abre la pestaña de inmediato para que el navegador no bloquee la ventana emergente.
     const tab = window.open("about:blank", "_blank");
-    const result = await dbCreateOrder(items, customer ?? { name: "", phone: "", district: "", address: "" });
+    const result = await dbCreateOrder(items ?? [], customer ?? { name: "", phone: "", district: "", address: "" }, combos ?? []);
     setBusy(false);
     if ("error" in result) {
       tab?.close();

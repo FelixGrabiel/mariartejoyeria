@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/misc";
 import { AdminLogin } from "./AdminLogin";
 import { AdminSidebar,adminSections, type AdminSection } from "./AdminSidebar";
 import { PackagingPanel, ThemesPanel } from "./GiftAdminPanels";
+import { CombosPanel } from "./CombosPanel";
 import { InventoryPanel } from "./InventoryPanel";
 import { OrdersTable, orderStatuses, orderTotal } from "./OrdersTable";
 import { ProductsTable } from "./ProductsTable";
@@ -98,7 +99,7 @@ export function AdminDashboard() {
                     <StatCard
                       label="Alertas de stock"
                       value={lowStock.length}
-                      hint="Variantes con 2 unidades o menos"
+                      hint="Variantes en su stock mínimo o por debajo"
                       icon={<AlertCircle size={17} />}
                       tone={lowStock.length ? "warning" : "default"}
                     />
@@ -178,6 +179,8 @@ export function AdminDashboard() {
               {section === "empaques" && <PackagingPanel />}
 
               {section === "significados" && <ThemesPanel />}
+
+              {section === "combos" && <CombosPanel />}
             </>
           )}
         </main>

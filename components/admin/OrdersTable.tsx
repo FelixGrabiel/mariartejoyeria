@@ -72,6 +72,7 @@ export function OrdersTable({ orders, compact = false }: { orders: Order[]; comp
                       <p>
                         {i.quantity}× {i.productName} · {i.variantLabel}
                         {i.occasion || i.packagingName || i.dedication ? <span className="ml-1 font-semibold text-rose-deep">· Regalo</span> : null}
+                        {i.comboName ? <span className="ml-1 font-semibold text-rose-deep">· Combo «{i.comboName}» #{i.comboGroup}</span> : null}
                       </p>
                       {i.occasion && <p className="pl-3">Ocasión: {i.occasion}</p>}
                       {i.packagingName && (

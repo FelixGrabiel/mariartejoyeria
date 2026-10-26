@@ -14,6 +14,8 @@ export interface ProductVariant {
   sku: string;
   label: string;
   stock: number;
+  /** Debajo o igual a este número se muestra la alerta de stock bajo (por defecto 2). */
+  minStock?: number;
 }
 
 export interface Product {
@@ -44,6 +46,46 @@ export interface Product {
   meaning?: string;
   /** Temas de «Joyas con significado» a los que pertenece. */
   themeIds?: string[];
+  /** Estilos para el asistente de recomendaciones: minimalista, delicado, llamativo, clasico. */
+  styles?: string[];
+}
+
+export interface ComboItem {
+  productId: string;
+  /** Variante fija; si falta, el cliente elige. */
+  sku?: string;
+  quantity: number;
+}
+
+export interface Combo {
+  id: string;
+  name: string;
+  description: string;
+  /** Descuento entero (0 = sin promoción). */
+  discountPercent: number;
+  active: boolean;
+  startsAt?: string;
+  endsAt?: string;
+  maxPerOrder: number;
+  sortOrder: number;
+  items: ComboItem[];
+}
+
+/** Combo en el carrito: `picks` tiene un SKU por componente, en el orden de `combo.items`. */
+export interface ComboCartItem {
+  comboId: string;
+  picks: string[];
+  quantity: number;
+}
+
+export interface ComboLine {
+  item: ComboCartItem;
+  combo: Combo;
+  components: { product: Product; variant: ProductVariant; quantity: number; unitPrice: number }[];
+  regular: number;
+  total: number;
+  savings: number;
+  issue?: string;
 }
 
 export interface MeaningTheme {
@@ -112,6 +154,9 @@ export interface OrderItem {
   packagingPrice?: number;
   dedication?: string;
   meaningCard?: boolean;
+  /** Si la pieza forma parte de un combo: nombre y número de grupo dentro del pedido. */
+  comboName?: string;
+  comboGroup?: number;
 }
 
 export interface Order {

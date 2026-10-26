@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { cn } from "@/lib/format";
-import { ClipboardList, Gift, History, LayoutDashboard, Package, Sparkles, Store } from "@/components/ui/icons";
+import { ClipboardList, Gift, History, LayoutDashboard, Package, ShoppingBag, Sparkles, Store } from "@/components/ui/icons";
 
-export type AdminSection = "resumen" | "productos" | "pedidos" | "inventario" | "empaques" | "significados";
+export type AdminSection = "resumen" | "productos" | "pedidos" | "inventario" | "empaques" | "significados" | "combos";
 
 export const adminSections: { id: AdminSection; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "resumen", label: "Resumen", icon: LayoutDashboard },
@@ -13,6 +13,7 @@ export const adminSections: { id: AdminSection; label: string; icon: typeof Layo
   { id: "inventario", label: "Inventario", icon: History },
   { id: "empaques", label: "Empaques", icon: Gift },
   { id: "significados", label: "Significados", icon: Sparkles },
+  { id: "combos", label: "Combos", icon: ShoppingBag },
 ];
 
 export function AdminSidebar({

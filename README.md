@@ -39,7 +39,18 @@ Datos de ejemplo: los dos empaques sembrados se llaman «(demostración)», tien
 - **SEO:** `sitemap.xml`, `robots.txt`, metadatos y datos estructurados por producto desde el servidor. **La indexación está apagada** mientras haya datos de ejemplo; se activa con la variable `NEXT_PUBLIC_ALLOW_INDEXING=true` (y `NEXT_PUBLIC_SITE_URL` con tu dominio) en Vercel.
 - **Esquema en el repositorio:** `supabase/migrations/` (el orden de los archivos es el orden de aplicación).
 
-**Pendiente (Fases B y C del prompt V2):** combos y promociones, asistente «Encuentra tu joya ideal», stock mínimo por variante, seguimiento de pedidos con código protegido, aviso de reposición, guías de tallas/cuidados, video, catálogo PDF, QR/enlaces compartibles, reseñas autorizadas e indicadores avanzados.
+### Mejoras V2 · Fase B (hecha)
+
+| Qué | Dónde |
+|---|---|
+| **Combina y ahorra** (combos de productos reales, variante fija o elegida por el cliente, vigencia, máximo por pedido, descuento % solo si lo configuras) | `/combos`, portada, carrito (`ComboCartLine`), panel → **Combos**; función SQL `place_order` guarda cada componente con su precio y el nombre del combo |
+| **Encuentra tu joya ideal** (5 preguntas, 3 a 6 joyas disponibles, sin IA externa) | `/asistente`, `lib/recommend.ts`. El estilo solo se pregunta si algún producto tiene estilos (se asignan en el formulario de producto) |
+| **Stock mínimo por variante** con alertas en el panel | formulario de producto (campo «Mín.») y Resumen |
+| **Seguimiento de pedidos** con código + celular | `/pedido` (ver arriba) |
+
+No hay combos de ejemplo: se crean en el panel. Un combo pausado, programado o vencido no se ve ni se puede comprar (lo exige la base de datos, no solo la pantalla).
+
+**Pendiente (Fase C y cupones):** cupones con código, guías de tallas y cuidados por material, aviso de reposición, video del producto, catálogo en PDF, QR/enlaces compartibles, reseñas autorizadas, indicadores avanzados, historial de inventario con usuario y exportaciones.
 
 ---
 

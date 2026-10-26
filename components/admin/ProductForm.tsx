@@ -6,6 +6,7 @@ import { useStore } from "@/context/StoreContext";
 import { categories } from "@/data/categories";
 import { demoImageLibrary } from "@/data/site";
 import { materialTypes } from "@/lib/catalog";
+import { styleOptions } from "@/lib/recommend";
 import { cn, slugify, todayISO } from "@/lib/format";
 import { supabase, uploadProductImage } from "@/lib/supabase";
 import type { CategoryId, MaterialType, Product, ProductVariant } from "@/types";
@@ -23,13 +24,14 @@ interface Draft {
   price: string;
   images: string[];
   variantName: string;
-  variants: { sku: string; label: string; stock: string }[];
+  variants: { sku: string; label: string; stock: string; minStock: string }[];
   featured: boolean;
   active: boolean;
   isNew: boolean;
   giftEnabled: boolean;
   meaning: string;
   themeIds: string[];
+  styles: string[];
 }
 
 type Errors = Record<string, string>;
@@ -46,8 +48,8 @@ function toDraft(product?: Product): Draft {
     price: product ? product.price.toFixed(2) : "",
     images: product?.images ?? [],
     variantName: product?.variantName ?? "",
-    variants: product?.variants.map((v) => ({ sku: v.sku, label: v.label, stock: String(v.stock) })) ?? [
-      { sku: "", label: "Única", stock: "0" },
+    variants: product?.variants.map((v) => ({ sku: v.sku, label: v.label, stock: String(v.stock), minStock: String(v.minStock ?? 2) })) ?? [
+      { sku: "", label: "Única", stock: "0", minStock: "2" },
     ],
     featured: product?.featured ?? false,
     active: product?.active ?? true,
@@ -55,6 +57,7 @@ function toDraft(product?: Product): Draft {
     giftEnabled: product?.giftEnabled ?? false,
     meaning: product?.meaning ?? "",
     themeIds: product?.themeIds ?? [],
+    styles: product?.styles ?? [],
   };
 }
 
@@ -138,6 +141,8 @@ export function ProductForm({
       if (!v.label.trim()) e[`variant-${i}-label`] = "Nombre requerido.";
       const stock = Number(v.stock);
       if (v.stock.trim() === "" || !Number.isInteger(stock) || stock < 0) e[`variant-${i}-stock`] = "Entero ≥ 0.";
+      const min = Number(v.minStock);
+      if (v.minStock.trim() === "" || !Number.isInteger(min) || min < 0) e[`variant-${i}-min`] = "Entero ≥ 0.";
     });
     if (d.variants.length > 1 && !d.variantName.trim()) e.variantName = "Si hay varias opciones, indica cómo se llaman (ej. Color).";
     return e;
@@ -156,6 +161,7 @@ export function ProductForm({
       sku: v.sku.trim().toUpperCase(),
       label: v.label.trim(),
       stock: Number(v.stock),
+      minStock: Number(v.minStock),
     }));
     const saved: Product = {
       id: product?.id ?? `p-${Date.now().toString(36)}`,
@@ -177,6 +183,7 @@ export function ProductForm({
       giftEnabled: draft.giftEnabled,
       meaning: draft.meaning.trim() || undefined,
       themeIds: draft.themeIds,
+      styles: draft.styles,
     };
     saveProduct(saved, isNew);
     onSaved(isNew ? `«${saved.name}» se creó en el catálogo demo.` : `Cambios guardados en «${saved.name}».`);
@@ -329,6 +336,31 @@ export function ProductForm({
             </div>
           )}
           <div className="mt-4">
+            <p className="field-label">Estilo (para «Encuentra tu joya ideal»)</p>
+            <div className="flex flex-wrap gap-2">
+              {styleOptions.map((s) => {
+                const on = draft.styles.includes(s.value);
+                return (
+                  <label
+                    key={s.value}
+                    className={cn(
+                      "cursor-pointer rounded-full border px-3 py-1.5 text-[13px] transition has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-rose",
+                      on ? "border-rose bg-blush-soft font-semibold text-rose-deep" : "border-line bg-white text-ink",
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      className="sr-only"
+                      checked={on}
+                      onChange={() => set({ styles: on ? draft.styles.filter((x) => x !== s.value) : [...draft.styles, s.value] })}
+                    />
+                    {s.label}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+          <div className="mt-4">
             <label htmlFor="pf-meaning" className="field-label">Significado propio de esta joya (opcional)</label>
             <textarea
               id="pf-meaning"
@@ -416,7 +448,7 @@ export function ProductForm({
           </div>
           <div className="space-y-3">
             {draft.variants.map((v, i) => (
-              <div key={i} className="grid grid-cols-[1fr_1fr_80px_auto] items-start gap-2">
+              <div key={i} className="grid grid-cols-[1fr_1fr_72px_72px_auto] items-start gap-2">
                 <div>
                   <label htmlFor={`pf-variant-${i}-sku`} className="sr-only">SKU variante {i + 1}</label>
                   <input
@@ -454,6 +486,20 @@ export function ProductForm({
                   />
                   <ErrorText id={`pf-variant-${i}-stock-error`} message={errors[`variant-${i}-stock`]} />
                 </div>
+                <div>
+                  <label htmlFor={`pf-variant-${i}-min`} className="sr-only">Stock mínimo variante {i + 1}</label>
+                  <input
+                    id={`pf-variant-${i}-min`}
+                    className="field min-h-11 px-3 text-[14px]"
+                    inputMode="numeric"
+                    placeholder="Mín."
+                    title="Stock mínimo: avisa cuando el stock llega a este número"
+                    value={v.minStock}
+                    onChange={(e) => set({ variants: draft.variants.map((x, j) => (j === i ? { ...x, minStock: e.target.value } : x)) })}
+                    aria-invalid={Boolean(errors[`variant-${i}-min`])}
+                  />
+                  <ErrorText id={`pf-variant-${i}-min-error`} message={errors[`variant-${i}-min`]} />
+                </div>
                 <button
                   type="button"
                   className="icon-btn h-11 w-11 text-muted hover:text-danger disabled:opacity-30"
@@ -470,7 +516,7 @@ export function ProductForm({
           <button
             type="button"
             className="btn btn-ghost btn-sm mt-3 -ml-2"
-            onClick={() => set({ variants: [...draft.variants, { sku: "", label: "", stock: "0" }] })}
+            onClick={() => set({ variants: [...draft.variants, { sku: "", label: "", stock: "0", minStock: "2" }] })}
           >
             <Plus size={16} /> Agregar variante
           </button>
