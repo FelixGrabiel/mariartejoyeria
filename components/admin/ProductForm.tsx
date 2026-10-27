@@ -82,7 +82,7 @@ export function ProductForm({
   product?: Product;
   onSaved: (message: string) => void;
 }) {
-  const { products, saveProduct, themes, setProductImages } = useStore();
+  const { products, saveProduct, themes, setProductImages, authRequired } = useStore();
   const isNew = !product;
   const [draft, setDraft] = useState<Draft>(() => toDraft(product));
   const [errors, setErrors] = useState<Errors>({});
@@ -217,7 +217,7 @@ export function ProductForm({
       styles: draft.styles,
     };
     saveProduct(saved, isNew);
-    onSaved(isNew ? `«${saved.name}» se creó en el catálogo demo.` : `Cambios guardados en «${saved.name}».`);
+    onSaved(isNew ? authRequired ? `«${saved.name}» se creó en el catálogo.` : `«${saved.name}» se creó en el catálogo demo.` : `Cambios guardados en «${saved.name}».`);
     onClose();
   }
 
@@ -229,13 +229,13 @@ export function ProductForm({
       open={open}
       onClose={onClose}
       title={isNew ? "Nuevo producto" : "Editar producto"}
-      description="Datos de demostración: se guardan solo en este navegador."
+      description={authRequired ? "Los cambios se guardan en la base de datos de la tienda." : "Datos de demostración: se guardan solo en este navegador."}
       size="lg"
       variant="sheet"
       footer={
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-[12px] text-muted">
-            {errorCount > 0 ? <span className="text-danger">Revisa {errorCount} campo(s) marcados.</span> : "Los cambios se reflejan de inmediato en la tienda demo."}
+            {errorCount > 0 ? <span className="text-danger">Revisa {errorCount} campo(s) marcados.</span> : (authRequired ? "Los cambios se reflejan de inmediato en la tienda." : "Los cambios se reflejan de inmediato en la tienda demo.")}
           </p>
           <div className="flex gap-2">
             <button type="button" className="btn btn-secondary" onClick={onClose}>Cancelar</button>

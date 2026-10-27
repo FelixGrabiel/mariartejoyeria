@@ -11,7 +11,7 @@ import { AlertCircle } from "@/components/ui/icons";
 const typeTone: Record<StockMovementType, BadgeTone> = { entrada: "success", salida: "danger", ajuste: "champagne" };
 
 export function InventoryPanel() {
-  const { products, movements, adjustStock } = useStore();
+  const { products, movements, adjustStock, authRequired } = useStore();
   const { showToast } = useToast();
   const [productId, setProductId] = useState(products[0]?.id ?? "");
   const [sku, setSku] = useState(products[0]?.variants[0]?.sku ?? "");
@@ -48,7 +48,7 @@ export function InventoryPanel() {
     <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
       <form onSubmit={onSubmit} noValidate className="rounded-2xl border border-line bg-white p-5 xl:self-start">
         <h3 className="font-serif text-[1.5rem] font-semibold">Registrar movimiento</h3>
-        <p className="mt-1 text-[12.5px] text-muted">Actualiza el stock y deja trazabilidad (demo).</p>
+        <p className="mt-1 text-[12.5px] text-muted">{authRequired ? "Actualiza el stock y deja trazabilidad." : "Actualiza el stock y deja trazabilidad (demo)."}</p>
         <div className="mt-5 space-y-4">
           <div>
             <label htmlFor="inv-product" className="field-label">Producto</label>

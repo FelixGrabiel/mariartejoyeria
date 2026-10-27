@@ -14,7 +14,7 @@ import { ProductImage } from "@/components/ui/ProductImage";
 import { ProductForm } from "./ProductForm";
 
 export function ProductsTable() {
-  const { products, toggleProductActive, deleteProduct } = useStore();
+  const { products, toggleProductActive, deleteProduct, authRequired } = useStore();
   const { showToast } = useToast();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("todas");
@@ -80,7 +80,7 @@ export function ProductsTable() {
 
       <div className="overflow-x-auto rounded-2xl border border-line bg-white">
         <table className="w-full min-w-[820px] text-left text-[13.5px]">
-          <caption className="sr-only">Productos del catálogo demo</caption>
+          <caption className="sr-only">Productos del catálogo</caption>
           <thead className="bg-ivory text-[11px] uppercase tracking-[0.12em] text-muted">
             <tr>
               <th scope="col" className="px-4 py-3 font-semibold">Producto</th>
@@ -175,10 +175,10 @@ export function ProductsTable() {
         onConfirm={() => {
           if (!toDelete) return;
           deleteProduct(toDelete.id);
-          showToast(`«${toDelete.name}» se eliminó del catálogo demo.`, { tone: "info" });
+          showToast(`«${toDelete.name}» se eliminó del catálogo.`, { tone: "info" });
         }}
         title="¿Eliminar este producto?"
-        message={`Se eliminará «${toDelete?.name ?? ""}» del catálogo demo y de los carritos de este navegador. Puedes recuperarlo con «Restablecer datos de demo».`}
+        message={authRequired ? `Se eliminará «${toDelete?.name ?? ""}» del catálogo de forma definitiva. Si solo quieres que deje de verse, ocúltalo en lugar de eliminarlo.` : `Se eliminará «${toDelete?.name ?? ""}» del catálogo demo y de los carritos de este navegador. Puedes recuperarlo con «Restablecer datos de demo».`}
         confirmLabel="Eliminar"
         danger
       />

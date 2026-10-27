@@ -21,7 +21,9 @@ export function AdminSidebar({
   onSelect,
   onNavigate,
   pendingOrders = 0,
+  connected = false,
 }: {
+  connected?: boolean;
   pendingOrders?: number;
   current: AdminSection;
   onSelect: (section: AdminSection) => void;
@@ -33,7 +35,7 @@ export function AdminSidebar({
         <p className="font-serif text-[1.9rem] font-medium leading-none text-ivory">
           Mari<span className="italic">Arte</span>
         </p>
-        <p className="mt-1 text-[9px] font-semibold uppercase tracking-[0.3em] text-blush">Panel · modo demo</p>
+        <p className="mt-1 text-[9px] font-semibold uppercase tracking-[0.3em] text-blush">{connected ? "Administración" : "Panel · modo demo"}</p>
       </div>
 
       <nav aria-label="Secciones del panel" className="mt-10 flex-1">
@@ -70,7 +72,7 @@ export function AdminSidebar({
           <Store size={18} /> Ver tienda
         </Link>
         <p className="px-3 text-[11px] leading-snug text-ivory/50">
-          Sin backend ni autenticación. Los cambios viven solo en este navegador.
+          {connected ? "Los cambios se guardan en la base de datos de la tienda." : "Sin backend ni autenticación. Los cambios viven solo en este navegador."}
         </p>
       </div>
     </div>

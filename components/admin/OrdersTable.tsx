@@ -32,7 +32,7 @@ export function OrdersTable({ orders, compact = false }: { orders: Order[]; comp
   return (
     <div className="overflow-x-auto rounded-2xl border border-line bg-white">
       <table className="w-full min-w-[720px] text-left text-[13.5px]">
-        <caption className="sr-only">Pedidos de ejemplo</caption>
+        <caption className="sr-only">Pedidos</caption>
         <thead className="bg-ivory text-[11px] uppercase tracking-[0.12em] text-muted">
           <tr>
             <th scope="col" className="px-4 py-3 font-semibold">Pedido</th>

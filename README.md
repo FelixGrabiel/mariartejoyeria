@@ -8,7 +8,7 @@ Tienda online **navegable y funcional** para MariArte | Joyería y Accesorios, h
 
 ## Estado actual: conectado a Supabase
 
-Con las variables de entorno definidas, la tienda lee el catálogo de Supabase, registra los pedidos (función `create_order`, que valida precio y stock en el servidor), descuenta stock al confirmar un pedido y permite subir fotos a Storage. El panel `/admin-demo` exige iniciar sesión con un usuario que esté en `staff_profiles`. Sin las variables, funciona en modo demostración con `localStorage`.
+Con las variables de entorno definidas, la tienda lee el catálogo de Supabase, registra los pedidos (función `create_order`, que valida precio y stock en el servidor), descuenta stock al confirmar un pedido y permite subir fotos a Storage. El panel `/admin` (también funciona `/admin-demo`) exige iniciar sesión con un usuario que esté en `staff_profiles`. Sin las variables, funciona en modo demostración con `localStorage`.
 
 Crea `.env.local` (no se sube a git):
 
@@ -95,7 +95,7 @@ Si `npm run build` muestra algún error de TypeScript, ejecuta `npm run typechec
 | `/nosotros` | Historia y valores (texto editable de demostración) |
 | `/contacto` | WhatsApp, Instagram, formulario demo con validación, preguntas frecuentes |
 | `/politicas` | Términos, privacidad, envíos, cambios, Libro de Reclamaciones — **provisional** |
-| `/admin-demo` | Panel demo: resumen, CRUD de productos y variantes, pedidos con cambio de estado, movimientos de stock, **Restablecer datos de demo** |
+| `/admin` | Panel de administración (en modo demo sin Supabase): resumen, CRUD de productos y variantes, pedidos con cambio de estado, movimientos de stock, **Restablecer datos de demo** |
 
 ## 4. Cómo probar los criterios de aceptación
 
@@ -104,7 +104,7 @@ Si `npm run build` muestra algún error de TypeScript, ejecuta `npm run typechec
 3. Agrega dos joyas distintas (una con variante), ve a `/carrito`, cambia cantidades y revisa el subtotal.
 4. Recarga la página: el carrito y los favoritos siguen ahí.
 5. Abre «Ver mensaje que se enviará» y pulsa **Pedir por WhatsApp**: se abre `wa.me` con el pedido codificado. **No se envía solo**; tú lo envías desde WhatsApp.
-6. Ve a `/admin-demo` → Productos → edita el precio o el stock de una joya → vuelve a la tienda y verás el cambio (también en el carrito, que avisa si el stock ya no alcanza).
+6. Ve a `/admin` → Productos → edita el precio o el stock de una joya → vuelve a la tienda y verás el cambio (también en el carrito, que avisa si el stock ya no alcanza).
 7. Prueba en el teléfono (o con las herramientas de desarrollador en 360 px / 768 px / 1440 px).
 
 ## 5. Estructura
@@ -144,7 +144,7 @@ Los iconos están incluidos en `components/ui/icons.tsx` (trazos estilo Lucide) 
 | **Fotos** | Copia los archivos a `public/images/` y usa la ruta `/images/archivo.jpg` en `products.ts`. Las fotos actuales son recortes de capturas de Instagram en baja resolución: reemplázalas por originales (ideal ≥ 1200 px, proporción 4:5). |
 | **Pedidos de ejemplo y movimientos** | `data/orders.ts` |
 
-**Importante:** después de editar los archivos de `data/`, pulsa **Restablecer datos de demo** en `/admin-demo` (o borra el `localStorage` del sitio), porque el navegador conserva la copia anterior del catálogo.
+**Importante:** después de editar los archivos de `data/`, pulsa **Restablecer datos de demo** en `/admin` (o borra el `localStorage` del sitio), porque el navegador conserva la copia anterior del catálogo.
 
 ## 7. Cómo evolucionar a una tienda real con Supabase (no implementado)
 

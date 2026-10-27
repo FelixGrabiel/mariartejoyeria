@@ -38,7 +38,7 @@ export function AdminDashboard() {
   return (
     <div className="min-h-dvh bg-[#faf5f2] lg:grid lg:grid-cols-[256px_1fr]">
       <aside className="hidden bg-ink px-5 py-7 lg:sticky lg:top-0 lg:block lg:h-dvh">
-        <AdminSidebar current={section} onSelect={setSection} pendingOrders={pending} />
+        <AdminSidebar current={section} onSelect={setSection} pendingOrders={pending} connected={authRequired} />
       </aside>
 
       <Modal
@@ -50,17 +50,17 @@ export function AdminDashboard() {
         panelClassName="!bg-ink text-ink [&_.icon-btn]:bg-ivory"
       >
         <div className="h-full pt-2">
-          <AdminSidebar current={section} onSelect={setSection} onNavigate={() => setNavOpen(false)} pendingOrders={pending} />
+          <AdminSidebar current={section} onSelect={setSection} onNavigate={() => setNavOpen(false)} pendingOrders={pending} connected={authRequired} />
         </div>
       </Modal>
 
       <div className="min-w-0">
-        <div role="note" className="flex items-center justify-center gap-2 bg-warning-soft px-4 py-2 text-center text-[12.5px] font-medium text-warning">
-          <Info size={15} className="shrink-0" />
-          {authRequired
-            ? "Conectado a Supabase · los cambios se guardan en la base de datos · datos de ejemplo"
-            : "Modo demostración · no conectado a un backend · datos ficticios guardados solo en este navegador"}
-        </div>
+        {!authRequired && (
+          <div role="note" className="flex items-center justify-center gap-2 bg-warning-soft px-4 py-2 text-center text-[12.5px] font-medium text-warning">
+            <Info size={15} className="shrink-0" />
+            Modo demostración · no conectado a un backend · datos ficticios guardados solo en este navegador
+          </div>
+        )}
 
         <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-line bg-[#faf5f2]/95 px-4 py-4 backdrop-blur sm:px-8">
           <button type="button" className="icon-btn -ml-2 lg:hidden" aria-label="Abrir navegación del panel" onClick={() => setNavOpen(true)}>
@@ -94,8 +94,8 @@ export function AdminDashboard() {
                 <div className="space-y-8">
                   <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     <StatCard label="Productos activos" value={active} hint={`${products.length - active} oculto(s)`} icon={<Package size={17} />} />
-                    <StatCard label="Pedidos de ejemplo" value={orders.length} hint={`${pending} pendiente(s) de atender`} icon={<ClipboardList size={17} />} />
-                    <StatCard label="Ventas simuladas" value={formatPrice(sales)} hint="Pedidos no cancelados · ficticio" icon={<Sparkles size={17} />} />
+                    <StatCard label={authRequired ? "Pedidos" : "Pedidos de ejemplo"} value={orders.length} hint={`${pending} pendiente(s) de atender`} icon={<ClipboardList size={17} />} />
+                    <StatCard label={authRequired ? "Ventas" : "Ventas simuladas"} value={formatPrice(sales)} hint={authRequired ? "Pedidos no cancelados · total referencial, sin envío" : "Pedidos no cancelados · ficticio"} icon={<Sparkles size={17} />} />
                     <StatCard
                       label="Alertas de stock"
                       value={lowStock.length}

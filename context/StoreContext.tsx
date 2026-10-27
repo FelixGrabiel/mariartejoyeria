@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Estado central de la demo: catálogo (editable desde /admin-demo), carrito,
+ * Estado central de la demo: catálogo (editable desde /admin), carrito,
  * favoritos, pedidos y movimientos de stock. Todo vive en localStorage.
  *
  * MIGRACIÓN A SUPABASE: sustituye la carga inicial (`initialProducts`, etc.)
