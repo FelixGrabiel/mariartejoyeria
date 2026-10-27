@@ -98,7 +98,9 @@ export function filterProducts(
       const haystack = normalize(
         `${p.name} ${categoryNames[p.categoryId] ?? ""} ${p.material} ${p.variants.map((v) => v.label).join(" ")}`,
       );
-      if (!q.split(/\s+/).every((word) => haystack.includes(word))) return false;
+      // Cada palabra buscada debe ser el comienzo de alguna palabra del producto («ojo» no encuentra «rojo»).
+      const words = haystack.split(/[^a-z0-9]+/).filter(Boolean);
+      if (!q.split(/\s+/).every((word) => words.some((w) => w.startsWith(word)))) return false;
     }
     return true;
   });
@@ -116,11 +118,13 @@ export function sortProducts(products: Product[], sort: SortOption): Product[] {
     case "precio-desc":
       return list.sort((a, b) => b.price - a.price);
     default:
+      // Los agotados siempre al final; entre los disponibles, primero los destacados.
       return list.sort((a, b) => {
-        if (a.featured !== b.featured) return a.featured ? -1 : 1;
         const soldA = isSoldOut(a) ? 1 : 0;
         const soldB = isSoldOut(b) ? 1 : 0;
-        return soldA - soldB;
+        if (soldA !== soldB) return soldA - soldB;
+        if (a.featured !== b.featured) return a.featured ? -1 : 1;
+        return 0;
       });
   }
 }
