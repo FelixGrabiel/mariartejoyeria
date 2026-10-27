@@ -97,6 +97,7 @@ export function GiftBuilder() {
   if (giftProducts.length === 0) {
     return (
       <div className="container-page">
+        <h1 className="sr-only">Arma tu regalo</h1>
         <EmptyState
           title="Aún no hay joyas para regalo personalizado"
           description="La tienda todavía no activó la personalización en sus productos. Mientras tanto puedes explorar el catálogo y dejar una dedicatoria desde el carrito."

@@ -1,13 +1,16 @@
 "use client";
 
-import { useState, type MouseEvent } from "react";
+import { useRef, useState, type MouseEvent } from "react";
 import { useToast } from "@/context/ToastContext";
 import { cn } from "@/lib/format";
 import { dbCreateOrder, supabase } from "@/lib/supabase";
 import { whatsappUrl } from "@/lib/whatsapp";
-import type { Customer } from "@/lib/customer";
+import { normalizePhone, type Customer } from "@/lib/customer";
+import { readStorage, writeStorage } from "@/lib/storage";
 import type { CartItem, ComboCartItem } from "@/types";
 import { MessageCircle } from "@/components/ui/icons";
+
+const LAST_ORDER_KEY = "mariarte.v1.lastOrder";
 
 /**
  * Abre WhatsApp con el pedido prellenado. NO envía nada automáticamente:
@@ -37,6 +40,8 @@ export function WhatsAppCheckoutButton({
 }) {
   const { showToast } = useToast();
   const [busy, setBusy] = useState(false);
+  // Guardia síncrona: dos clics en el mismo instante no pueden registrar dos pedidos.
+  const submitting = useRef(false);
 
   async function placeOrderAndOpen(event: MouseEvent<HTMLAnchorElement>) {
     if (!supabase || (!items?.length && !combos?.length)) {
@@ -44,24 +49,34 @@ export function WhatsAppCheckoutButton({
       return;
     }
     event.preventDefault();
-    if (busy) return;
+    if (submitting.current) return;
+    submitting.current = true;
     setBusy(true);
+    const who = customer ?? { name: "", phone: "", district: "", address: "" };
+    // Si el cliente vuelve a pulsar con exactamente el mismo pedido y datos, se reabre el ya registrado.
+    const signature = JSON.stringify({ items, combos, who: { ...who, phone: normalizePhone(who.phone) } });
+    const last = readStorage<{ signature: string; code: string; at: number } | null>(LAST_ORDER_KEY, null);
+    const repeated = last && last.signature === signature && Date.now() - last.at < 30 * 60 * 1000 ? last.code : null;
     // Se abre la pestaña de inmediato para que el navegador no bloquee la ventana emergente.
     const tab = window.open("about:blank", "_blank");
-    const result = await dbCreateOrder(items ?? [], customer ?? { name: "", phone: "", district: "", address: "" }, combos ?? []);
+    const result = repeated ? { code: repeated } : await dbCreateOrder(items ?? [], who, combos ?? []);
+    submitting.current = false;
     setBusy(false);
     if ("error" in result) {
       tab?.close();
       showToast(`No pudimos registrar tu pedido: ${result.error}`, { tone: "error" });
       return;
     }
+    if (!repeated) writeStorage(LAST_ORDER_KEY, { signature, code: result.code, at: Date.now() });
     const text = buildMessage ? buildMessage(result.code) : `Pedido web ${result.code}\n\n${message}`;
     if (tab) tab.location.href = whatsappUrl(text);
     else window.location.href = whatsappUrl(text);
-    showToast(`Pedido ${result.code} registrado. Envía el mensaje en WhatsApp para confirmarlo.`, {
-      tone: "success",
-      action: { label: "Seguir pedido", href: "/pedido" },
-    });
+    showToast(
+      repeated
+        ? `Tu pedido ${result.code} ya estaba registrado. Reabrimos WhatsApp, sin duplicarlo.`
+        : `Pedido ${result.code} registrado. Envía el mensaje en WhatsApp para confirmarlo.`,
+      { tone: repeated ? "info" : "success", action: { label: "Seguir pedido", href: "/pedido" } },
+    );
   }
 
   if (disabled) {

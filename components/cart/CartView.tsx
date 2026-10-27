@@ -31,6 +31,7 @@ export function CartView() {
   if (cartLines.length === 0 && comboLines.length === 0) {
     return (
       <div className="container-page">
+        <h1 className="sr-only">Tu carrito</h1>
         <EmptyState
           title="Tu carrito aún está vacío"
           description="Encuentra ese detalle especial: pulseras, sets para compartir y regalos con dedicatoria."

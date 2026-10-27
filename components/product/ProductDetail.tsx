@@ -8,7 +8,6 @@ import { getCategory } from "@/data/categories";
 import { site } from "@/data/site";
 import { firstAvailableVariant, isSoldOut } from "@/lib/catalog";
 import { cn, formatPrice } from "@/lib/format";
-import { unitsForSku } from "@/lib/gift";
 import { buildProductMessage, whatsappUrl } from "@/lib/whatsapp";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState, SearchIllustration } from "@/components/ui/EmptyState";
@@ -34,7 +33,7 @@ function InfoAccordion({ title, icon, children, defaultOpen = false }: { title: 
 }
 
 export function ProductDetail({ slug }: { slug: string }) {
-  const { hydrated, getProductBySlug, storeProducts, addToCart, isFavorite, toggleFavorite, cart, themes, activePackaging } = useStore();
+  const { hydrated, getProductBySlug, storeProducts, addToCart, isFavorite, toggleFavorite, unitsInCart, themes, activePackaging } = useStore();
   const { showToast } = useToast();
   const product = getProductBySlug(slug);
 
@@ -74,6 +73,7 @@ export function ProductDetail({ slug }: { slug: string }) {
   if (!product || !product.active) {
     return (
       <div className="container-page">
+        <h1 className="sr-only">Joya no encontrada</h1>
         <EmptyState
           illustration={<SearchIllustration />}
           title="No encontramos esta joya"
@@ -91,7 +91,7 @@ export function ProductDetail({ slug }: { slug: string }) {
   const category = getCategory(product.categoryId);
   const variant = product.variants.find((v) => v.sku === sku);
   const stock = variant?.stock ?? 0;
-  const inCart = sku ? unitsForSku(cart, sku) : 0;
+  const inCart = sku ? unitsInCart(sku) : 0;
   const productThemes = themes.filter((t) => t.active && product.themeIds?.includes(t.id));
   const maxAddable = Math.max(0, stock - inCart);
   const soldOutAll = isSoldOut(product);

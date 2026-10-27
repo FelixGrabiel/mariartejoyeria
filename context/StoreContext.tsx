@@ -83,6 +83,8 @@ interface StoreContextValue {
   addToCart: (productId: string, sku: string, quantity: number, gift?: GiftOptions) => ActionResult;
   updateQuantity: (productId: string, sku: string, quantity: number, gift?: GiftOptions) => void;
   removeFromCart: (productId: string, sku: string, gift?: GiftOptions) => void;
+  /** Unidades de una variante ya reservadas en el carrito (sueltas + dentro de combos). */
+  unitsInCart: (sku: string) => number;
 
   /** Combos: con sesión de administrador incluyen pausados y programados; `liveCombos` solo los vigentes. */
   combos: Combo[];
@@ -746,6 +748,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     addToCart,
     updateQuantity,
     removeFromCart,
+    unitsInCart,
     combos,
     liveCombos,
     comboCart,
