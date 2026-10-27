@@ -290,15 +290,20 @@ function TrackForm() {
   );
 }
 
-/** Convierte URLs en enlaces (solo https). */
+/** Convierte URLs en enlaces (solo https), también si la IA las escribe en Markdown o entre paréntesis. */
 function linkify(text: string) {
-  return text.split(/(https?:\/\/\S+)/g).map((part, i) =>
-    /^https?:\/\//.test(part) ? (
-      <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-semibold underline underline-offset-2">
-        <MessageCircle size={13} /> Abrir WhatsApp
-      </a>
-    ) : (
-      part
-    ),
-  );
+  const cleaned = text.replace(/\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g, "$2");
+  return cleaned.split(/(https?:\/\/[^\s)\]]+)/g).map((part, i) => {
+    if (!/^https?:\/\//.test(part)) return part;
+    const url = part.replace(/[.,;:!?]+$/, "");
+    const tail = part.slice(url.length);
+    return (
+      <span key={i}>
+        <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-semibold underline underline-offset-2">
+          <MessageCircle size={13} /> Abrir enlace
+        </a>
+        {tail}
+      </span>
+    );
+  });
 }
