@@ -416,3 +416,22 @@ export async function dbDeleteCombo(id: string): Promise<DbResult> {
   const { error } = await supabase.from("combos").delete().eq("id", id);
   return error?.message ?? null;
 }
+
+/** Guarda solo la lista (y el orden) de fotos de un producto. */
+export async function dbSetProductImages(productId: string, images: string[]): Promise<DbResult> {
+  if (!supabase) return "Supabase no está configurado.";
+  const { error } = await supabase.from("products").update({ images }).eq("id", productId);
+  return error?.message ?? null;
+}
+
+/** Borra del almacenamiento una foto subida desde el panel (solo si es una URL de nuestro bucket). */
+export async function deleteStoredImage(url: string): Promise<DbResult> {
+  if (!supabase) return "Supabase no está configurado.";
+  const marker = "/storage/v1/object/public/product-images/";
+  const idx = url.indexOf(marker);
+  if (idx < 0) return null; // foto de la biblioteca del sitio: no hay archivo remoto que borrar
+  const { error } = await supabase.storage.from("product-images").remove([decodeURIComponent(url.slice(idx + marker.length))]);
+  return error?.message ?? null;
+}
+
+export const isStoredImage = (url: string): boolean => url.includes("/storage/v1/object/public/product-images/");

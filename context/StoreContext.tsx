@@ -33,6 +33,7 @@ import {
   dbSavePackaging,
   dbSaveProduct,
   dbSaveTheme,
+  dbSetProductImages,
   dbSetProductActive,
   dbSetStock,
   dbUpdateOrderStatus,
@@ -116,6 +117,8 @@ interface StoreContextValue {
   orders: Order[];
   movements: StockMovement[];
   saveProduct: (product: Product, isNew: boolean) => void;
+  /** Guarda al instante la lista y el orden de fotos de un producto existente. */
+  setProductImages: (productId: string, images: string[]) => void;
   deleteProduct: (productId: string) => void;
   toggleProductActive: (productId: string) => void;
   updateOrderStatus: (orderId: string, status: OrderStatus) => void;
@@ -608,6 +611,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [products, isAdmin, persist],
   );
 
+  const setProductImages = useCallback(
+    (productId: string, images: string[]) => {
+      setProducts((list) => list.map((p) => (p.id === productId ? { ...p, images } : p)));
+      if (isAdmin) persist(dbSetProductImages(productId, images));
+    },
+    [isAdmin, persist],
+  );
+
   const deleteProduct = useCallback(
     (productId: string) => {
       setProducts((list) => list.filter((p) => p.id !== productId));
@@ -761,6 +772,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     orders,
     movements,
     saveProduct,
+    setProductImages,
     deleteProduct,
     toggleProductActive,
     updateOrderStatus,

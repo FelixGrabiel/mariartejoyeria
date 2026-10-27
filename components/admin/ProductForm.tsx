@@ -8,7 +8,8 @@ import { demoImageLibrary } from "@/data/site";
 import { materialTypes } from "@/lib/catalog";
 import { styleOptions } from "@/lib/recommend";
 import { cn, slugify, todayISO } from "@/lib/format";
-import { supabase, uploadProductImage } from "@/lib/supabase";
+import { compressImage } from "@/lib/image";
+import { deleteStoredImage, isStoredImage, supabase, uploadProductImage } from "@/lib/supabase";
 import type { CategoryId, MaterialType, Product, ProductVariant } from "@/types";
 import { Modal } from "@/components/ui/Modal";
 import { AlertCircle, Check, Plus, Trash } from "@/components/ui/icons";
@@ -81,7 +82,7 @@ export function ProductForm({
   product?: Product;
   onSaved: (message: string) => void;
 }) {
-  const { products, saveProduct, themes } = useStore();
+  const { products, saveProduct, themes, setProductImages } = useStore();
   const isNew = !product;
   const [draft, setDraft] = useState<Draft>(() => toDraft(product));
   const [errors, setErrors] = useState<Errors>({});
@@ -96,27 +97,57 @@ export function ProductForm({
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }));
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  // Biblioteca demo + fotos subidas que ya estén en este producto.
-  const gallery = [
-    ...demoImageLibrary,
-    ...draft.images.filter((src) => !demoImageLibrary.some((i) => i.src === src)).map((src) => ({ src, label: "Foto subida" })),
-  ];
+  // Biblioteca del sitio + todas las fotos subidas (de este y de otros productos) para poder reutilizarlas.
+  const uploadedUrls = Array.from(new Set([...products.flatMap((p) => p.images), ...draft.images].filter((src) => !demoImageLibrary.some((i) => i.src === src))));
+  const gallery = [...demoImageLibrary, ...uploadedUrls.map((src) => ({ src, label: "Foto subida" }))];
+
+  /** Cambia las fotos del borrador; en un producto que ya existe se guardan al instante. */
+  function changeImages(next: string[]) {
+    setDraft((d) => ({ ...d, images: next }));
+    if (product) setProductImages(product.id, next);
+  }
+
+  async function removeFile(src: string) {
+    const usedElsewhere = products.some((p) => p.id !== product?.id && p.images.includes(src));
+    if (usedElsewhere) {
+      setUploadError("Esa foto la usa otro producto: solo se quitó de este.");
+      changeImages(draft.images.filter((s) => s !== src));
+      return;
+    }
+    if (!window.confirm("¿Borrar esta foto definitivamente del almacenamiento?")) return;
+    const error = await deleteStoredImage(src);
+    if (error) setUploadError(`No se pudo borrar el archivo: ${error}`);
+    changeImages(draft.images.filter((s) => s !== src));
+  }
+
+  function moveImage(index: number, delta: number) {
+    const next = [...draft.images];
+    const target = index + delta;
+    if (target < 0 || target >= next.length) return;
+    [next[index], next[target]] = [next[target], next[index]];
+    changeImages(next);
+  }
 
   async function onUpload(files: FileList | null) {
     if (!files?.length) return;
     setUploading(true);
     setUploadError(null);
     const added: string[] = [];
-    for (const file of Array.from(files)) {
+    for (const original of Array.from(files)) {
+      if (original.size > 25 * 1024 * 1024) {
+        setUploadError(`${original.name} pesa más de 25 MB.`);
+        continue;
+      }
+      const file = await compressImage(original);
       if (file.size > 5 * 1024 * 1024) {
-        setUploadError(`${file.name} pesa más de 5 MB.`);
+        setUploadError(`${original.name} sigue pesando más de 5 MB tras reducirla.`);
         continue;
       }
       const result = await uploadProductImage(file);
       if ("error" in result) setUploadError(result.error);
       else added.push(result.url);
     }
-    if (added.length) setDraft((d) => ({ ...d, images: [...d.images, ...added] }));
+    if (added.length) changeImages([...draft.images, ...added]);
     setUploading(false);
   }
 
@@ -376,7 +407,8 @@ export function ProductForm({
         <fieldset>
           <legend className="field-label">Fotografías</legend>
           <p className="mb-3 text-[12px] text-muted">
-            Elige de la biblioteca o sube tus fotos (el orden de selección define la foto principal).
+            Elige de la biblioteca o sube tus fotos. La primera es la foto principal.
+            {product ? " En un producto que ya existe, las fotos se guardan al instante." : " Se guardarán al crear el producto."}
           </p>
           {supabase && (
             <div className="mb-3">
@@ -394,7 +426,7 @@ export function ProductForm({
                   }}
                 />
               </label>
-              <span className="ml-3 text-[12px] text-muted">JPG, PNG o WebP · máx. 5 MB · ideal 1200 px, proporción 4:5</span>
+              <span className="ml-3 text-[12px] text-muted">JPG, PNG o WebP · se reducen solas a 1600 px · ideal proporción 4:5</span>
               {uploadError && <p role="alert" className="mt-2 text-[12px] font-medium text-danger">{uploadError}</p>}
             </div>
           )}
@@ -414,9 +446,7 @@ export function ProductForm({
                     type="checkbox"
                     className="sr-only"
                     checked={selected}
-                    onChange={() =>
-                      set({ images: selected ? draft.images.filter((s) => s !== img.src) : [...draft.images, img.src] })
-                    }
+                    onChange={() => changeImages(selected ? draft.images.filter((s) => s !== img.src) : [...draft.images, img.src])}
                   />
                   <Image src={img.src} alt={img.label} fill sizes="90px" className="object-cover" />
                   {selected && (
@@ -429,6 +459,29 @@ export function ProductForm({
             })}
           </div>
           {draft.images.length === 0 && <p className="mt-2 text-[12px] text-muted">Sin foto: la tienda mostrará «Foto pendiente».</p>}
+          {draft.images.length > 0 && (
+            <ol className="mt-4 space-y-2" aria-label="Orden de las fotos">
+              {draft.images.map((src, i) => (
+                <li key={src} className="flex items-center gap-3 rounded-xl border border-line bg-white p-2">
+                  <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-blush-soft">
+                    <Image src={src} alt="" fill sizes="48px" className="object-cover" />
+                  </span>
+                  <span className="min-w-0 flex-1 text-[13px] text-ink">
+                    {i === 0 ? <strong className="text-rose-deep">Foto principal</strong> : `Foto ${i + 1}`}
+                    {isStoredImage(src) && <span className="ml-2 text-[11px] text-muted">subida desde el panel</span>}
+                  </span>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => moveImage(i, -1)} disabled={i === 0} aria-label={`Subir la foto ${i + 1}`}>↑</button>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => moveImage(i, 1)} disabled={i === draft.images.length - 1} aria-label={`Bajar la foto ${i + 1}`}>↓</button>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => changeImages(draft.images.filter((s) => s !== src))}>Quitar</button>
+                  {isStoredImage(src) && (
+                    <button type="button" className="icon-btn text-muted hover:text-danger" aria-label={`Borrar la foto ${i + 1} del almacenamiento`} onClick={() => removeFile(src)}>
+                      <Trash size={17} />
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ol>
+          )}
         </fieldset>
 
         <fieldset className="rounded-2xl border border-line bg-white p-4 sm:p-5">
