@@ -16,6 +16,7 @@ export function RestockNotice({ product, variant }: { product: Product; variant?
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [note, setNote] = useState("");
   const [consent, setConsent] = useState(false);
   const [error, setError] = useState("");
@@ -41,8 +42,9 @@ export function RestockNotice({ product, variant }: { product: Product; variant?
     if (name.trim().length < 2) return setError("Escribe tu nombre.");
     if (!/^9\d{8}$/.test(normalizePhone(phone))) return setError("Escribe un celular de 9 dígitos que empiece con 9.");
     if (!consent) return setError("Marca la casilla para que podamos escribirte.");
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())) return setError("Escribe un correo válido o déjalo vacío.");
     setBusy(true);
-    const result = await dbRequestRestock({ productId: product.id, sku: variant?.sku, name, phone, note, consent });
+    const result = await dbRequestRestock({ productId: product.id, sku: variant?.sku, name, phone, email, note, consent });
     setBusy(false);
     if ("error" in result) setError(result.error);
     else setDone(true);
@@ -72,7 +74,7 @@ export function RestockNotice({ product, variant }: { product: Product; variant?
       {done && (
         <p role="status" className="mt-4 flex items-start gap-2 text-[13.5px] text-ink">
           <Check size={16} className="mt-0.5 shrink-0 text-success" />
-          Listo, dejamos tu aviso. Si el producto vuelve, MariArte te escribirá al número que indicaste. Es un aviso manual de la tienda.
+          Listo, dejamos tu aviso. Si el producto vuelve, MariArte te escribirá al número que indicaste{email.trim() ? " y te enviará un correo" : ""}. No podemos reservarlo ni asegurar una fecha.
         </p>
       )}
 
@@ -87,12 +89,16 @@ export function RestockNotice({ product, variant }: { product: Product; variant?
             <input id="rs-phone" className="field" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} autoComplete="tel" placeholder="987 654 321" />
           </div>
           <div>
+            <label htmlFor="rs-email" className="field-label">Correo (opcional, para avisarte automáticamente)</label>
+            <input id="rs-email" type="email" className="field" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" placeholder="tucorreo@ejemplo.com" />
+          </div>
+          <div>
             <label htmlFor="rs-note" className="field-label">Nota (opcional)</label>
             <input id="rs-note" className="field" value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} placeholder="Ej.: lo necesito para un regalo" />
           </div>
           <label className="flex cursor-pointer items-start gap-3 text-[13px] leading-snug">
             <input type="checkbox" className="mt-0.5 h-4 w-4 accent-rose" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
-            <span>Acepto que MariArte me escriba por WhatsApp a este número para avisarme de {label}. Usarán mis datos solo para eso.</span>
+            <span>Acepto que MariArte me avise de {label} por WhatsApp a este número{email.trim() ? " y por correo" : ""}. Usarán mis datos solo para eso.</span>
           </label>
           {error && (
             <p role="alert" className="field-error">

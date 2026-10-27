@@ -54,6 +54,13 @@ No hay combos de ejemplo: se crean en el panel. Un combo pausado, programado o v
 
 En una joya agotada, el cliente puede **consultar por WhatsApp** o **dejar su contacto** («Avísame cuando vuelva», con consentimiento). La tienda ve los avisos en `/admin` → **Avisos de stock** (con contador y botón «Avisar por WhatsApp»); al registrar una entrada de stock, el panel recuerda cuántas personas esperan. Es un aviso **manual**, no automático. En el carrito, una pieza sin stock también ofrece «Consultar disponibilidad por WhatsApp».
 
+### Asistente (bot) y aviso automático (hecho; el envío necesita tus claves)
+
+- **Asistente del sitio** (botón «Asistente», abajo a la izquierda): menú de respuestas fijas con datos reales (stock y precio de una joya, estado de pedido con código + celular, envíos, pagos, cómo comprar) y paso a una persona por WhatsApp. No inventa precios, plazos ni stock. Lógica en `lib/bot.ts`.
+- **IA opcional** para preguntas libres: función `assistant` (Supabase Edge Function). Solo responde con el catálogo real y las reglas del sitio. **Se activa solo cuando pones una clave** en Supabase → Edge Functions → Secrets: `ANTHROPIC_API_KEY` (Claude) o `OPENAI_API_KEY`. Opcional: `ASSISTANT_MODEL`. Límites: 20 mensajes por hora por conexión y 800 al día en total.
+- **Aviso automático al volver el stock:** al reponer stock, los avisos pendientes quedan «listos para avisar». La función `notify-restock` envía un correo (cada 5 minutos desde `pg_cron`, o con «Enviar correos ahora» en el panel). **Se activa cuando pones** `RESEND_API_KEY` y `FROM_EMAIL` (por ejemplo `MariArte <avisos@tudominio.com>`) en los mismos Secrets. Sin eso, no envía nada y los avisos siguen siendo manuales por WhatsApp.
+- Las funciones están en `supabase/functions/`.
+
 **Pendiente (Fase C y cupones):** cupones con código, guías de tallas y cuidados por material, aviso de reposición, video del producto, catálogo en PDF, QR/enlaces compartibles, reseñas autorizadas, indicadores avanzados, historial de inventario con usuario y exportaciones.
 
 ---

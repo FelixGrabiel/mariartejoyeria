@@ -196,6 +196,11 @@ export interface RestockRequest {
   note: string;
   status: "pendiente" | "atendido";
   createdAt: string;
+  email?: string;
+  /** Desde cuándo hay stock otra vez (listo para avisar). */
+  readyAt?: string;
+  notifiedAt?: string;
+  notifyStatus?: "enviado" | "fallido" | "sin_correo";
 }
 
 export interface Testimonial {

@@ -444,15 +444,17 @@ export async function dbRequestRestock(input: {
   sku?: string;
   name: string;
   phone: string;
+  email?: string;
   note?: string;
   consent: boolean;
 }): Promise<{ id: number } | { error: string }> {
   if (!supabase) return { error: "Los avisos no están disponibles en modo demostración." };
-  const { data, error } = await supabase.rpc("request_restock", {
+  const { data, error } = await supabase.rpc("request_restock_v2", {
     p_product_id: input.productId,
     p_sku: input.sku ?? "",
     p_name: input.name.trim(),
     p_phone: normalizePhone(input.phone),
+    p_email: (input.email ?? "").trim(),
     p_note: (input.note ?? "").trim(),
     p_consent: input.consent,
   });
@@ -475,6 +477,10 @@ export async function fetchRestockRequests(): Promise<RestockRequest[] | null> {
     note: r.note,
     status: r.status,
     createdAt: r.created_at,
+    email: r.email ?? undefined,
+    readyAt: r.ready_at ?? undefined,
+    notifiedAt: r.notified_at ?? undefined,
+    notifyStatus: r.notify_status ?? undefined,
   }));
 }
 
@@ -482,4 +488,43 @@ export async function dbSetRestockStatus(id: number, status: "pendiente" | "aten
   if (!supabase) return "Supabase no está configurado.";
   const { error } = await supabase.from("restock_requests").update({ status }).eq("id", id);
   return error?.message ?? null;
+}
+
+// ---------- Asistente (IA opcional) y envío de avisos por correo ----------
+
+/** Pregunta al asistente con IA (función del servidor). Devuelve la respuesta o el motivo por el que no se pudo. */
+export async function askAssistant(messages: { role: string; content: string }[]): Promise<{ reply: string } | { error: "not_configured" | "rate" | "busy" | "fail" }> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !key) return { error: "not_configured" };
+  try {
+    const res = await fetch(`${url}/functions/v1/assistant`, {
+      method: "POST",
+      headers: { "content-type": "application/json", apikey: key, authorization: `Bearer ${key}` },
+      body: JSON.stringify({ messages }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && typeof data.reply === "string") return { reply: data.reply };
+    if (data?.error === "not_configured" || data?.error === "rate" || data?.error === "busy") return { error: data.error };
+    return { error: "fail" };
+  } catch {
+    return { error: "fail" };
+  }
+}
+
+export interface NotifyResult {
+  configured: boolean;
+  message?: string;
+  sent?: number;
+  failed?: number;
+  withoutEmail?: number;
+  skipped?: number;
+}
+
+/** Pide al servidor que envíe ya los avisos por correo pendientes (solo administradores). */
+export async function invokeNotifyRestock(): Promise<NotifyResult | { error: string }> {
+  if (!supabase) return { error: "Supabase no está configurado." };
+  const { data, error } = await supabase.functions.invoke("notify-restock", { body: {} });
+  if (error) return { error: "No se pudo ejecutar el envío. Inténtalo de nuevo." };
+  return data as NotifyResult;
 }

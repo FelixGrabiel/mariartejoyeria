@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import { AssistantBot } from "@/components/bot/AssistantBot";
 import { Footer } from "./Footer";
 import { Header } from "./Header";
 import { TopBar } from "./TopBar";
@@ -29,6 +30,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
       </main>
       <Footer />
       {pathname !== "/carrito" && !pathname?.startsWith("/producto/") && <WhatsAppFloat />}
+      <AssistantBot />
     </>
   );
 }
