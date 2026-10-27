@@ -76,7 +76,6 @@ export default function ContactPage() {
             </details>
           ))}
         </div>
-        <p className="mt-4 text-center text-[12px] text-muted">Respuestas provisionales: edítalas en data/content.ts.</p>
       </section>
     </div>
   );
