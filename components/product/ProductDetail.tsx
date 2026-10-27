@@ -14,6 +14,7 @@ import { EmptyState, SearchIllustration } from "@/components/ui/EmptyState";
 import { ChevronDown, ChevronRight, Gift, Heart, MessageCircle, Package, ShoppingBag, Truck } from "@/components/ui/icons";
 import { SectionHeading, Skeleton } from "@/components/ui/misc";
 import { ProductGallery } from "./ProductGallery";
+import { RestockNotice } from "./RestockNotice";
 import { ProductGrid } from "./ProductGrid";
 import { QuantitySelector } from "./QuantitySelector";
 import { StockStatus } from "./StockStatus";
@@ -170,6 +171,8 @@ export function ProductDetail({ slug }: { slug: string }) {
                   </p>
                 )}
               </div>
+
+              {(soldOutAll || stock === 0) && <RestockNotice product={product} variant={variant} />}
 
               <div className="flex flex-col gap-3">
                 <div className="flex gap-3">

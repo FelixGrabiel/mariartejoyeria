@@ -14,12 +14,13 @@ import { AdminSidebar,adminSections, type AdminSection } from "./AdminSidebar";
 import { PackagingPanel, ThemesPanel } from "./GiftAdminPanels";
 import { CombosPanel } from "./CombosPanel";
 import { InventoryPanel } from "./InventoryPanel";
+import { RestockPanel } from "./RestockPanel";
 import { OrdersTable, orderStatuses, orderTotal } from "./OrdersTable";
 import { ProductsTable } from "./ProductsTable";
 import { StatCard } from "./StatCard";
 
 export function AdminDashboard() {
-  const { hydrated, products, orders, resetDemo, authRequired, authChecked, isAdmin, adminEmail, signOut } = useStore();
+  const { hydrated, products, orders, restockRequests, resetDemo, authRequired, authChecked, isAdmin, adminEmail, signOut } = useStore();
   const { showToast } = useToast();
   const [section, setSection] = useState<AdminSection>("resumen");
   const [navOpen, setNavOpen] = useState(false);
@@ -28,6 +29,7 @@ export function AdminDashboard() {
 
   const active = products.filter((p) => p.active).length;
   const pending = orders.filter((o) => o.status === "pendiente").length;
+  const pendingAlerts = restockRequests.filter((r) => r.status === "pendiente").length;
   const sales = orders.filter((o) => o.status !== "cancelado").reduce((sum, o) => sum + orderTotal(o), 0);
   const lowStock = lowStockVariants(products.filter((p) => p.active));
   const title = adminSections.find((s) => s.id === section)?.label ?? "Resumen";
@@ -38,7 +40,7 @@ export function AdminDashboard() {
   return (
     <div className="min-h-dvh bg-[#faf5f2] lg:grid lg:grid-cols-[256px_1fr]">
       <aside className="hidden bg-ink px-5 py-7 lg:sticky lg:top-0 lg:block lg:h-dvh">
-        <AdminSidebar current={section} onSelect={setSection} pendingOrders={pending} connected={authRequired} />
+        <AdminSidebar current={section} onSelect={setSection} pendingOrders={pending} pendingAlerts={pendingAlerts} connected={authRequired} />
       </aside>
 
       <Modal
@@ -50,7 +52,7 @@ export function AdminDashboard() {
         panelClassName="!bg-ink text-ink [&_.icon-btn]:bg-ivory"
       >
         <div className="h-full pt-2">
-          <AdminSidebar current={section} onSelect={setSection} onNavigate={() => setNavOpen(false)} pendingOrders={pending} connected={authRequired} />
+          <AdminSidebar current={section} onSelect={setSection} onNavigate={() => setNavOpen(false)} pendingOrders={pending} pendingAlerts={pendingAlerts} connected={authRequired} />
         </div>
       </Modal>
 
@@ -181,6 +183,8 @@ export function AdminDashboard() {
               {section === "significados" && <ThemesPanel />}
 
               {section === "combos" && <CombosPanel />}
+
+              {section === "avisos" && <RestockPanel />}
             </>
           )}
         </main>

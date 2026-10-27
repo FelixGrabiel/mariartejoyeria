@@ -185,6 +185,19 @@ export interface StockMovement {
   note: string;
 }
 
+export interface RestockRequest {
+  id: number;
+  productId: string | null;
+  sku?: string;
+  productName: string;
+  variantLabel?: string;
+  customerName: string;
+  customerPhone: string;
+  note: string;
+  status: "pendiente" | "atendido";
+  createdAt: string;
+}
+
 export interface Testimonial {
   id: string;
   name: string;

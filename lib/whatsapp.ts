@@ -74,6 +74,18 @@ export function buildOrderMessage(lines: CartLine[], giftNote?: string, customer
   return parts.join("\n");
 }
 
+/** Consulta al negocio por una pieza agotada. */
+export function availabilityMessage(label: string): string {
+  return `Hola, MariArte. ¿Volverá a estar disponible «${label}»? ¿Para cuándo, más o menos? Gracias.`;
+}
+
+/** Enlace para que la tienda escriba a un cliente (celular peruano de 9 dígitos). */
+export function whatsappToCustomer(phone: string, message: string): string {
+  const digits = phone.replace(/\D/g, "");
+  const national = digits.length === 11 && digits.startsWith("51") ? digits.slice(2) : digits;
+  return `https://wa.me/51${national}?text=${encodeURIComponent(message)}`;
+}
+
 export function buildProductMessage(product: Product, variant: ProductVariant | undefined, quantity: number): string {
   const variantText = variant && product.variantName ? ` (${product.variantName}: ${variant.label})` : "";
   return [

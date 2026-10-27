@@ -11,7 +11,7 @@ import { AlertCircle } from "@/components/ui/icons";
 const typeTone: Record<StockMovementType, BadgeTone> = { entrada: "success", salida: "danger", ajuste: "champagne" };
 
 export function InventoryPanel() {
-  const { products, movements, adjustStock, authRequired } = useStore();
+  const { products, movements, adjustStock, authRequired, restockRequests } = useStore();
   const { showToast } = useToast();
   const [productId, setProductId] = useState(products[0]?.id ?? "");
   const [sku, setSku] = useState(products[0]?.variants[0]?.sku ?? "");
@@ -41,7 +41,8 @@ export function InventoryPanel() {
     setError("");
     setQuantity("1");
     setNote("");
-    showToast(result.message);
+    const waiting = type === "entrada" ? restockRequests.filter((r) => r.status === "pendiente" && r.productId === productId && (!r.sku || r.sku === sku)).length : 0;
+    showToast(waiting > 0 ? `${result.message} ${waiting} ${waiting === 1 ? "persona espera" : "personas esperan"} este producto: revisa «Avisos de stock».` : result.message);
   }
 
   return (

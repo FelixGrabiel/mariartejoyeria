@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useStore } from "@/context/StoreContext";
 import { useToast } from "@/context/ToastContext";
 import { formatPrice } from "@/lib/format";
+import { availabilityMessage, whatsappUrl } from "@/lib/whatsapp";
 import type { CartLine } from "@/types";
 import { QuantitySelector } from "@/components/product/QuantitySelector";
 import { AlertCircle, Gift, Trash } from "@/components/ui/icons";
@@ -66,6 +67,16 @@ export function CartItem({ line }: { line: CartLine }) {
           <p role="alert" className="mt-2 flex items-center gap-1.5 text-[13px] font-medium text-danger">
             <AlertCircle size={15} /> {line.issue}
           </p>
+        )}
+        {line.issue && (
+          <a
+            href={whatsappUrl(availabilityMessage(`${product.name}${product.variantName ? ` (${variant.label})` : ""}`))}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="link-underline mt-1 w-fit text-[13px] font-semibold text-rose-deep"
+          >
+            Consultar disponibilidad por WhatsApp
+          </a>
         )}
 
         <div className="mt-auto flex flex-wrap items-end justify-between gap-3 pt-4">

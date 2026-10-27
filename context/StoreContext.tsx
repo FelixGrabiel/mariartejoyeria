@@ -34,12 +34,14 @@ import {
   dbSaveProduct,
   dbSaveTheme,
   dbSetProductImages,
+  dbSetRestockStatus,
   dbSetProductActive,
   dbSetStock,
   dbUpdateOrderStatus,
   fetchAdminData,
   fetchCatalog,
   fetchCombos,
+  fetchRestockRequests,
   fetchStoreConfig,
   supabase,
 } from "@/lib/supabase";
@@ -58,6 +60,7 @@ import type {
   OrderStatus,
   PackagingOption,
   Product,
+  RestockRequest,
   StockMovement,
   StockMovementType,
 } from "@/types";
@@ -85,6 +88,10 @@ interface StoreContextValue {
   removeFromCart: (productId: string, sku: string, gift?: GiftOptions) => void;
   /** Unidades de una variante ya reservadas en el carrito (sueltas + dentro de combos). */
   unitsInCart: (sku: string) => number;
+
+  /** Avisos de «avísame cuando vuelva» (solo con sesión de administrador). */
+  restockRequests: RestockRequest[];
+  setRestockStatus: (id: number, status: "pendiente" | "atendido") => void;
 
   /** Combos: con sesión de administrador incluyen pausados y programados; `liveCombos` solo los vigentes. */
   combos: Combo[];
@@ -162,6 +169,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [dedicationMax, setDedicationMax] = useState(DEFAULT_DEDICATION_MAX);
   const [configLoaded, setConfigLoaded] = useState(!supabase);
   const [combos, setCombos] = useState<Combo[]>([]);
+  const [restockRequests, setRestockRequests] = useState<RestockRequest[]>([]);
   const [comboCart, setComboCart] = useState<ComboCartItem[]>([]);
 
   const loadConfig = useCallback(async () => {
@@ -204,6 +212,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setProducts(data.products);
     setOrders(data.orders);
     setMovements(data.movements);
+    const requests = await fetchRestockRequests();
+    if (requests) setRestockRequests(requests);
     loadConfig();
   }, [showToast, loadConfig]);
 
@@ -242,6 +252,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setOrders(data.orders);
       setMovements(data.movements);
       setProducts(data.products);
+      const requests = await fetchRestockRequests();
+      if (requests) setRestockRequests(requests);
     }, 60_000);
     return () => clearInterval(timer);
   }, [isAdmin]);
@@ -276,6 +288,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (remote) setProducts(remote);
     setOrders([]);
     setMovements([]);
+    setRestockRequests([]);
     loadConfig();
   }, [loadConfig]);
 
@@ -725,6 +738,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const activePackaging = useMemo(() => packaging.filter((o) => o.active).sort((a, b) => a.sortOrder - b.sortOrder), [packaging]);
   const activeThemes = useMemo(() => themes.filter((t) => t.active).sort((a, b) => a.sortOrder - b.sortOrder), [themes]);
 
+  const setRestockStatus = useCallback(
+    (id: number, status: "pendiente" | "atendido") => {
+      setRestockRequests((list) => list.map((r) => (r.id === id ? { ...r, status } : r)));
+      if (isAdmin) persist(dbSetRestockStatus(id, status));
+    },
+    [isAdmin, persist],
+  );
+
   const resetDemo = useCallback(() => {
     for (const key of Object.values(STORAGE_KEYS)) removeStorage(key);
     setProducts(initialProducts);
@@ -749,6 +770,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     updateQuantity,
     removeFromCart,
     unitsInCart,
+    restockRequests,
+    setRestockStatus,
     combos,
     liveCombos,
     comboCart,

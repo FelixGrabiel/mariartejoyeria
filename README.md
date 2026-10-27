@@ -50,6 +50,10 @@ Datos de ejemplo: los dos empaques sembrados se llaman «(demostración)», tien
 
 No hay combos de ejemplo: se crean en el panel. Un combo pausado, programado o vencido no se ve ni se puede comprar (lo exige la base de datos, no solo la pantalla).
 
+### Avisos de stock (hecho)
+
+En una joya agotada, el cliente puede **consultar por WhatsApp** o **dejar su contacto** («Avísame cuando vuelva», con consentimiento). La tienda ve los avisos en `/admin` → **Avisos de stock** (con contador y botón «Avisar por WhatsApp»); al registrar una entrada de stock, el panel recuerda cuántas personas esperan. Es un aviso **manual**, no automático. En el carrito, una pieza sin stock también ofrece «Consultar disponibilidad por WhatsApp».
+
 **Pendiente (Fase C y cupones):** cupones con código, guías de tallas y cuidados por material, aviso de reposición, video del producto, catálogo en PDF, QR/enlaces compartibles, reseñas autorizadas, indicadores avanzados, historial de inventario con usuario y exportaciones.
 
 ---

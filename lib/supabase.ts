@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { normalizePhone, type Customer } from "@/lib/customer";
-import type { CartItem, Combo, ComboCartItem, CategoryId, MaterialType, MeaningTheme, Order, OrderStatus, PackagingOption, Product, StockMovement } from "@/types";
+import type { CartItem, Combo, RestockRequest, ComboCartItem, CategoryId, MaterialType, MeaningTheme, Order, OrderStatus, PackagingOption, Product, StockMovement } from "@/types";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -435,3 +435,51 @@ export async function deleteStoredImage(url: string): Promise<DbResult> {
 }
 
 export const isStoredImage = (url: string): boolean => url.includes("/storage/v1/object/public/product-images/");
+
+// ---------- Avisos de stock ----------
+
+/** El cliente deja su contacto para que la tienda le escriba si un producto agotado vuelve. */
+export async function dbRequestRestock(input: {
+  productId: string;
+  sku?: string;
+  name: string;
+  phone: string;
+  note?: string;
+  consent: boolean;
+}): Promise<{ id: number } | { error: string }> {
+  if (!supabase) return { error: "Los avisos no están disponibles en modo demostración." };
+  const { data, error } = await supabase.rpc("request_restock", {
+    p_product_id: input.productId,
+    p_sku: input.sku ?? "",
+    p_name: input.name.trim(),
+    p_phone: normalizePhone(input.phone),
+    p_note: (input.note ?? "").trim(),
+    p_consent: input.consent,
+  });
+  if (error) return { error: error.message };
+  return { id: Number(data) };
+}
+
+export async function fetchRestockRequests(): Promise<RestockRequest[] | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase.from("restock_requests").select("*").order("created_at", { ascending: false });
+  if (error || !data) return null;
+  return data.map((r) => ({
+    id: r.id,
+    productId: r.product_id,
+    sku: r.sku ?? undefined,
+    productName: r.product_name,
+    variantLabel: r.variant_label ?? undefined,
+    customerName: r.customer_name,
+    customerPhone: r.customer_phone,
+    note: r.note,
+    status: r.status,
+    createdAt: r.created_at,
+  }));
+}
+
+export async function dbSetRestockStatus(id: number, status: "pendiente" | "atendido"): Promise<DbResult> {
+  if (!supabase) return "Supabase no está configurado.";
+  const { error } = await supabase.from("restock_requests").update({ status }).eq("id", id);
+  return error?.message ?? null;
+}

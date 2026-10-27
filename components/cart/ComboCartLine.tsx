@@ -3,6 +3,7 @@
 import { useStore } from "@/context/StoreContext";
 import { useToast } from "@/context/ToastContext";
 import { formatPrice } from "@/lib/format";
+import { availabilityMessage, whatsappUrl } from "@/lib/whatsapp";
 import type { ComboLine } from "@/types";
 import { QuantitySelector } from "@/components/product/QuantitySelector";
 import { AlertCircle, Sparkles, Trash } from "@/components/ui/icons";
@@ -54,6 +55,16 @@ export function ComboCartLine({ line, index }: { line: ComboLine; index: number 
         <p role="alert" className="mt-2 flex items-center gap-1.5 text-[13px] font-medium text-danger">
           <AlertCircle size={15} /> {line.issue}
         </p>
+      )}
+      {line.issue && (
+        <a
+          href={whatsappUrl(availabilityMessage(`el combo ${combo.name}`))}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="link-underline mt-1 inline-block text-[13px] font-semibold text-rose-deep"
+        >
+          Consultar disponibilidad por WhatsApp
+        </a>
       )}
 
       <div className="mt-4 flex flex-wrap items-end justify-between gap-3">

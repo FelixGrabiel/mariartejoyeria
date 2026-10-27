@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { cn } from "@/lib/format";
-import { ClipboardList, Gift, History, LayoutDashboard, Package, ShoppingBag, Sparkles, Store } from "@/components/ui/icons";
+import { AlertCircle, ClipboardList, Gift, History, LayoutDashboard, Package, ShoppingBag, Sparkles, Store } from "@/components/ui/icons";
 
-export type AdminSection = "resumen" | "productos" | "pedidos" | "inventario" | "empaques" | "significados" | "combos";
+export type AdminSection = "resumen" | "productos" | "pedidos" | "inventario" | "empaques" | "significados" | "combos" | "avisos";
 
 export const adminSections: { id: AdminSection; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "resumen", label: "Resumen", icon: LayoutDashboard },
@@ -14,6 +14,7 @@ export const adminSections: { id: AdminSection; label: string; icon: typeof Layo
   { id: "empaques", label: "Empaques", icon: Gift },
   { id: "significados", label: "Significados", icon: Sparkles },
   { id: "combos", label: "Combos", icon: ShoppingBag },
+  { id: "avisos", label: "Avisos de stock", icon: AlertCircle },
 ];
 
 export function AdminSidebar({
@@ -21,8 +22,10 @@ export function AdminSidebar({
   onSelect,
   onNavigate,
   pendingOrders = 0,
+  pendingAlerts = 0,
   connected = false,
 }: {
+  pendingAlerts?: number;
   connected?: boolean;
   pendingOrders?: number;
   current: AdminSection;
@@ -56,6 +59,11 @@ export function AdminSidebar({
               >
                 <Icon size={18} />
                 <span className="flex-1">{label}</span>
+                {id === "avisos" && pendingAlerts > 0 && (
+                  <span className="rounded-full bg-rose px-2 py-0.5 text-[11px] font-bold text-white" aria-label={`${pendingAlerts} avisos pendientes`}>
+                    {pendingAlerts}
+                  </span>
+                )}
                 {id === "pedidos" && pendingOrders > 0 && (
                   <span className="rounded-full bg-rose px-2 py-0.5 text-[11px] font-bold text-white" aria-label={`${pendingOrders} pedidos pendientes`}>
                     {pendingOrders}
