@@ -56,11 +56,6 @@ export function HeroSection() {
               className="object-cover"
             />
           </div>
-          <div className="absolute right-[4%] top-[10%] hidden rounded-2xl bg-white/95 px-4 py-3 shadow-soft backdrop-blur sm:block">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-champagne-deep">Favorita</p>
-            <p className="font-serif text-lg font-semibold leading-tight">Ojo Protector</p>
-            <p className="text-[12px] text-muted">desde S/ 34.90 · ejemplo</p>
-          </div>
         </div>
       </div>
     </section>

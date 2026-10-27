@@ -3,8 +3,7 @@ import type { Category } from "@/types";
 import { ArrowRight } from "@/components/ui/icons";
 import { ProductImage } from "@/components/ui/ProductImage";
 
-export function CategoryCard({ category }: { category: Category }) {
-  const sample = !category.image;
+export function CategoryCard({ category, cover }: { category: Category; cover?: string }) {
   return (
     <Link
       href={`/catalogo?categoria=${category.id}`}
@@ -12,16 +11,11 @@ export function CategoryCard({ category }: { category: Category }) {
     >
       <div className="relative aspect-[3/4] overflow-hidden rounded-t-[999px] rounded-b-[1.4rem] bg-blush-soft">
         <ProductImage
-          src={category.image}
+          src={cover ?? category.image}
           alt=""
           sizes="(min-width: 1024px) 220px, 42vw"
           className="transition duration-700 group-hover:scale-[1.05]"
         />
-        {sample && (
-          <span className="absolute inset-x-0 bottom-3 mx-auto w-fit rounded-full bg-white/90 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-rose-deep">
-            Categoría de muestra
-          </span>
-        )}
       </div>
       <div className="mt-3 flex items-center justify-between gap-2">
         <h3 className="font-serif text-[1.35rem] font-semibold text-ink">{category.name}</h3>

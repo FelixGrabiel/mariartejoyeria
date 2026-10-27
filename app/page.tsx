@@ -3,13 +3,12 @@ import { HeroSection } from "@/components/home/HeroSection";
 import { ComboSection } from "@/components/home/ComboSection";
 import { FinderCta } from "@/components/home/FinderCta";
 import { MeaningSection } from "@/components/home/MeaningSection";
+import { CategoriesSection } from "@/components/home/CategoriesSection";
 import {
   BenefitsSection,
-  CategoriesSection,
   GiftSection,
   SocialCtaSection,
   StoryTeaser,
-  TestimonialsSection,
 } from "@/components/home/HomeSections";
 
 export default function HomePage() {
@@ -24,7 +23,6 @@ export default function HomePage() {
       <FinderCta />
       <BenefitsSection />
       <StoryTeaser />
-      <TestimonialsSection />
       <SocialCtaSection />
     </>
   );

@@ -145,12 +145,12 @@ function movementId(): string {
 export function StoreProvider({ children }: { children: ReactNode }) {
   const { showToast } = useToast();
   const [hydrated, setHydrated] = useState(false);
-  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [products, setProducts] = useState<Product[]>(supabase ? [] : initialProducts);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [giftNote, setGiftNote] = useState("");
-  const [orders, setOrders] = useState<Order[]>(initialOrders);
-  const [movements, setMovements] = useState<StockMovement[]>(initialMovements);
+  const [orders, setOrders] = useState<Order[]>(supabase ? [] : initialOrders);
+  const [movements, setMovements] = useState<StockMovement[]>(supabase ? [] : initialMovements);
   const [authChecked, setAuthChecked] = useState(!supabase);
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminEmail, setAdminEmail] = useState<string | null>(null);
@@ -175,17 +175,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   // Carga inicial desde localStorage (solo en el navegador).
   useEffect(() => {
-    setProducts(readStorage(STORAGE_KEYS.products, initialProducts));
+    if (!supabase) setProducts(readStorage(STORAGE_KEYS.products, initialProducts));
     setCart(readStorage<CartItem[]>(STORAGE_KEYS.cart, []));
     setFavorites(readStorage<string[]>(STORAGE_KEYS.favorites, []));
     setGiftNote(readStorage(STORAGE_KEYS.giftNote, ""));
     setComboCart(readStorage<ComboCartItem[]>(COMBO_CART_KEY, []));
-    setOrders(readStorage(STORAGE_KEYS.orders, initialOrders));
-    setMovements(readStorage(STORAGE_KEYS.movements, initialMovements));
+    if (!supabase) {
+      setOrders(readStorage(STORAGE_KEYS.orders, initialOrders));
+      setMovements(readStorage(STORAGE_KEYS.movements, initialMovements));
+    }
     setHydrated(true);
     // Si hay Supabase configurado, el catálogo (y su stock) viene de la base de datos.
     fetchCatalog().then((remote) => {
-      if (remote && remote.length) setProducts(remote);
+      if (remote) setProducts(remote);
     });
     loadConfig();
   }, [loadConfig]);
@@ -270,8 +272,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setAdminEmail(null);
     const remote = await fetchCatalog();
     if (remote) setProducts(remote);
-    setOrders(initialOrders);
-    setMovements(initialMovements);
+    setOrders([]);
+    setMovements([]);
     loadConfig();
   }, [loadConfig]);
 

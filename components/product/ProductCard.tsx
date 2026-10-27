@@ -90,7 +90,7 @@ export function ProductCard({ product, priority = false }: { product: Product; p
         <div className="mt-auto flex items-center justify-between gap-2 pt-3">
           <p className="text-[15px] font-semibold text-ink">
             {formatPrice(product.price)}
-            <span className="sr-only"> (precio de ejemplo)</span>
+            <span className="sr-only"> (precio referencial)</span>
           </p>
           <button
             type="button"

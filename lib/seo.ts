@@ -17,16 +17,17 @@ export interface PublicProduct {
   createdAt: string;
 }
 
-export async function fetchPublicProducts(): Promise<PublicProduct[]> {
+/** null = no hay base de datos o falló (se usa el catálogo local); [] = la base respondió y no hay productos activos. */
+export async function fetchPublicProducts(): Promise<PublicProduct[] | null> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !key) return [];
+  if (!url || !key) return null;
   try {
     const res = await fetch(`${url}/rest/v1/products?select=slug,name,description,price,images,created_at,product_variants(stock)&order=created_at.desc`, {
       headers: { apikey: key },
       next: { revalidate: 300 },
     });
-    if (!res.ok) return [];
+    if (!res.ok) return null;
     const rows = (await res.json()) as {
       slug: string;
       name: string;
@@ -46,7 +47,7 @@ export async function fetchPublicProducts(): Promise<PublicProduct[]> {
       createdAt: r.created_at,
     }));
   } catch {
-    return [];
+    return null;
   }
 }
 

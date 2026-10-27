@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { AlertCircle, Check } from "@/components/ui/icons";
+import { whatsappUrl } from "@/lib/whatsapp";
+import { AlertCircle, Check, MessageCircle } from "@/components/ui/icons";
 
 interface FormState {
   name: string;
@@ -26,10 +27,22 @@ function validate(values: FormState): Errors {
   return errors;
 }
 
+function buildMessage(v: FormState): string {
+  return [
+    "Hola, MariArte.",
+    "",
+    `Motivo: ${v.topic}`,
+    v.message.trim(),
+    "",
+    `Soy ${v.name.trim()}. Pueden responderme a: ${v.contact.trim()}`,
+  ].join("\n");
+}
+
+/** Prepara el mensaje y abre WhatsApp: la persona lo revisa y decide si lo envía. */
 export function ContactForm() {
   const [values, setValues] = useState<FormState>(initial);
   const [errors, setErrors] = useState<Errors>({});
-  const [sent, setSent] = useState(false);
+  const [opened, setOpened] = useState(false);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setValues((v) => ({ ...v, [key]: value }));
@@ -41,14 +54,15 @@ export function ContactForm() {
     const result = validate(values);
     setErrors(result);
     if (Object.keys(result).length === 0) {
-      setSent(true);
+      window.open(whatsappUrl(buildMessage(values)), "_blank", "noopener,noreferrer");
+      setOpened(true);
     } else {
       const firstKey = Object.keys(result)[0];
       document.getElementById(`contact-${firstKey}`)?.focus();
     }
   }
 
-  if (sent) {
+  if (opened) {
     return (
       <div role="status" className="card p-8 text-center">
         <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-success-soft text-success">
@@ -56,14 +70,14 @@ export function ContactForm() {
         </span>
         <h3 className="mt-5 font-serif text-[1.8rem] font-semibold">¡Gracias, {values.name.trim().split(" ")[0]}!</h3>
         <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted">
-          Tu mensaje se validó correctamente, pero <strong className="text-ink">no se envió a MariArte</strong>: este formulario es de demostración. Para una respuesta real, escríbenos por WhatsApp.
+          Abrimos WhatsApp con tu mensaje listo. <strong className="text-ink">Envíalo desde allí</strong> para que MariArte te responda.
         </p>
         <button
           type="button"
           className="btn btn-secondary mt-6"
           onClick={() => {
             setValues(initial);
-            setSent(false);
+            setOpened(false);
           }}
         >
           Escribir otro mensaje
@@ -80,7 +94,7 @@ export function ContactForm() {
     ) : null;
 
   return (
-    <form noValidate onSubmit={onSubmit} className="card space-y-5 p-6 sm:p-8" aria-describedby="contact-demo-note">
+    <form noValidate onSubmit={onSubmit} className="card space-y-5 p-6 sm:p-8">
       <div>
         <label htmlFor="contact-name" className="field-label">Nombre</label>
         <input
@@ -101,7 +115,7 @@ export function ContactForm() {
           className="field"
           inputMode="email"
           autoComplete="email"
-          placeholder="tucorreo@ejemplo.com o 987 654 321"
+          placeholder="Tu correo o 987 654 321"
           value={values.contact}
           onChange={(e) => update("contact", e.target.value)}
           aria-invalid={Boolean(errors.contact)}
@@ -131,10 +145,10 @@ export function ContactForm() {
         />
         {fieldError("message")}
       </div>
-      <button type="submit" className="btn btn-primary w-full">Enviar mensaje (demo)</button>
-      <p id="contact-demo-note" className="text-center text-[12px] text-muted">
-        Formulario de demostración: valida los datos y confirma en pantalla, pero no envía ni guarda información.
-      </p>
+      <button type="submit" className="btn btn-whatsapp w-full">
+        <MessageCircle size={18} /> Enviar por WhatsApp
+      </button>
+      <p className="text-center text-[12px] text-muted">Se abre WhatsApp con tu mensaje listo. Tú decides cuándo enviarlo.</p>
     </form>
   );
 }

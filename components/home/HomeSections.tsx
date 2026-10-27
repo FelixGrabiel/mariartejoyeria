@@ -1,27 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
-import { categories } from "@/data/categories";
-import { testimonials } from "@/data/content";
 import { site } from "@/data/site";
 import { whatsappUrl } from "@/lib/whatsapp";
-import { ArrowRight, Gift, Instagram, MessageCircle, Package, PenLine, Quote, Sparkles, Truck } from "@/components/ui/icons";
-import { DemoNotice, Ornament, SectionHeading } from "@/components/ui/misc";
-import { CategoryCard } from "./CategoryCard";
-
-export function CategoriesSection() {
-  return (
-    <section aria-labelledby="categories-title" className="mt-4">
-      <div className="container-page">
-        <SectionHeading id="categories-title" eyebrow="Para cada momento" title="Explora por categoría" />
-      </div>
-      <div className="no-scrollbar flex snap-x scroll-px-4 gap-4 overflow-x-auto px-4 pb-2 sm:mx-auto sm:max-w-[1240px] sm:px-7 lg:px-10 sm:grid sm:grid-cols-3 sm:gap-6 sm:overflow-visible lg:grid-cols-5">
-        {categories.map((c) => (
-          <CategoryCard key={c.id} category={c} />
-        ))}
-      </div>
-    </section>
-  );
-}
+import { ArrowRight, Gift, Instagram, MessageCircle, Package, PenLine, Sparkles, Truck } from "@/components/ui/icons";
+import { Ornament, SectionHeading } from "@/components/ui/misc";
 
 export function GiftSection() {
   const items = [
@@ -104,36 +86,6 @@ export function BenefitsSection() {
           </li>
         ))}
       </ul>
-    </section>
-  );
-}
-
-export function TestimonialsSection() {
-  return (
-    <section aria-labelledby="testimonials-title" className="container-page mt-24 sm:mt-32">
-      <SectionHeading
-        id="testimonials-title"
-        eyebrow="Lo que dicen"
-        title="Historias que acompañamos"
-        align="center"
-        description="Espacio reservado para reseñas reales de clientas y clientes."
-      />
-      <ul className="grid gap-5 md:grid-cols-3">
-        {testimonials.map((t) => (
-          <li key={t.id} className="card relative flex flex-col p-7">
-            <span className="absolute right-5 top-5 rounded-full bg-warning-soft px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-warning">
-              Ejemplo
-            </span>
-            <Quote size={26} className="text-blush-deep" />
-            <p className="mt-4 flex-1 font-serif text-[1.3rem] italic leading-snug text-ink">«{t.text}»</p>
-            <p className="mt-5 text-sm font-semibold text-ink">{t.name}</p>
-            <p className="text-[13px] text-muted">Sobre: {t.product}</p>
-          </li>
-        ))}
-      </ul>
-      <DemoNotice className="mx-auto mt-6 max-w-2xl">
-        Testimonios de demostración: no son reseñas reales. Reemplázalos en <code className="font-mono text-[12px]">data/content.ts</code> por reseñas con autorización.
-      </DemoNotice>
     </section>
   );
 }

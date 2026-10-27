@@ -11,7 +11,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: path === "" ? 1 : 0.7,
   }));
   const remote = await fetchPublicProducts();
-  const products = (remote.length ? remote : initialProducts.map((p) => ({ slug: p.slug, createdAt: p.createdAt }))).map((p) => ({
+  const products = (remote ?? initialProducts.map((p) => ({ slug: p.slug, createdAt: p.createdAt }))).map((p) => ({
     url: `${SITE_URL}/producto/${p.slug}`,
     lastModified: new Date(p.createdAt),
     changeFrequency: "weekly" as const,

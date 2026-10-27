@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { site } from "@/data/site";
 import { Gift, Heart, MessageCircle } from "@/components/ui/icons";
-import { DemoNotice, Ornament } from "@/components/ui/misc";
+import { Ornament } from "@/components/ui/misc";
 
 export const metadata: Metadata = {
   title: "Nosotros",
@@ -35,9 +35,6 @@ export default function AboutPage() {
               Trabajamos piezas delicadas en {site.brandMaterials}, entre otros materiales, y las presentamos listas para regalar a parejas, amigas, familia o para ti.
             </p>
           </div>
-          <DemoNotice className="mt-6 max-w-lg">
-            Texto de marca de demostración. Reemplázalo en <code className="font-mono text-[12px]">app/nosotros/page.tsx</code> con la historia real del emprendimiento.
-          </DemoNotice>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div className="relative col-span-2 aspect-[16/10] overflow-hidden rounded-[2rem] bg-blush-soft">

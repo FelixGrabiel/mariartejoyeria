@@ -16,7 +16,7 @@ export function FeaturedProducts() {
         id="featured-title"
         eyebrow="Las favoritas"
         title="Piezas para enamorarte"
-        description="Una selección de ejemplo de nuestras joyas más pedidas."
+        description="Una selección de nuestras joyas."
         action={
           <Link href="/catalogo" className="link-underline inline-flex items-center gap-1 text-sm font-semibold text-rose-deep">
             Ver todo el catálogo <ArrowRight size={15} />

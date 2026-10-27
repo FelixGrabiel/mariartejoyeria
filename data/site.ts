@@ -15,8 +15,6 @@ export const site = {
   topBarMessage: "Envíos a todo el Perú · costo y plazo se coordinan por WhatsApp",
   /** Materiales comunicados por la marca en general. */
   brandMaterials: "plata y acero quirúrgico",
-  demoNotice:
-    "Prototipo de demostración: productos, precios, stock y pedidos son ejemplos y no corresponden a la oferta oficial de MariArte.",
 } as const;
 
 export const navLinks = [

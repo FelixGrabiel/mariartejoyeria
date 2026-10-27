@@ -11,13 +11,13 @@ export const revalidate = 300;
 
 export async function generateStaticParams() {
   const remote = await fetchPublicProducts();
-  const slugs = remote.length ? remote.map((p) => p.slug) : initialProducts.map((p) => p.slug);
+  const slugs = remote ? remote.map((p) => p.slug) : initialProducts.map((p) => p.slug);
   return slugs.map((slug) => ({ slug }));
 }
 
 async function findProduct(slug: string) {
   const remote = await fetchPublicProducts();
-  if (remote.length) return remote.find((p) => p.slug === slug);
+  if (remote) return remote.find((p) => p.slug === slug);
   const local = initialProducts.find((p) => p.slug === slug);
   return local
     ? { slug: local.slug, name: local.name, description: local.description, price: local.price, images: local.images, inStock: true, createdAt: local.createdAt }
