@@ -54,7 +54,7 @@ export function FilterPanel({
       {activeThemes.length > 0 && (
         <fieldset>
           <legend className="eyebrow mb-3">Significado</legend>
-          {activeThemes.map((t) => (
+          {activeThemes.filter((t) => (counts[`tema:${t.id}`] ?? 0) > 0 || filters.themes.includes(t.id)).map((t) => (
             <CheckRow
               key={t.id}
               label={t.name}
@@ -68,7 +68,7 @@ export function FilterPanel({
 
       <fieldset>
         <legend className="eyebrow mb-3">Categoría</legend>
-        {categories.map((c) => (
+        {categories.filter((c) => (counts[c.id] ?? 0) > 0 || filters.categories.includes(c.id)).map((c) => (
           <CheckRow
             key={c.id}
             label={c.name}

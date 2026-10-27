@@ -30,7 +30,7 @@ const columns = [
     ],
   },
   {
-    title: "Legal (provisional)",
+    title: "Legal",
     links: [
       { href: "/politicas#terminos", label: "Términos y condiciones" },
       { href: "/politicas#privacidad", label: "Política de privacidad" },

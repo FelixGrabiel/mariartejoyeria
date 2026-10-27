@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useStore } from "@/context/StoreContext";
 import { categories, getCategory } from "@/data/categories";
 import { site } from "@/data/site";
+import { whatsappUrl } from "@/lib/whatsapp";
 import {
   emptyFilters,
   filterProducts,
@@ -174,6 +175,17 @@ export function CatalogView() {
 
           {!hydrated ? (
             <ProductGrid products={[]} loading columns={3} skeletonCount={6} />
+          ) : storeProducts.length === 0 ? (
+            <EmptyState
+              illustration={<SearchIllustration />}
+              title="Estamos preparando nuestro catálogo"
+              description="Muy pronto verás aquí nuestras joyas. Mientras tanto, escríbenos por WhatsApp y te ayudamos a elegir."
+              action={
+                <a href={whatsappUrl("Hola, MariArte. Quisiera conocer sus joyas.")} target="_blank" rel="noopener noreferrer" className="btn btn-whatsapp">
+                  Escribir por WhatsApp
+                </a>
+              }
+            />
           ) : results.length === 0 ? (
             <EmptyState
               illustration={<SearchIllustration />}

@@ -9,6 +9,7 @@ import { SectionHeading } from "@/components/ui/misc";
 export function FeaturedProducts() {
   const { storeProducts, hydrated } = useStore();
   const featured = storeProducts.filter((p) => p.featured).slice(0, 4);
+  if (hydrated && featured.length === 0) return null;
 
   return (
     <section aria-labelledby="featured-title" className="container-page mt-20 sm:mt-28">
