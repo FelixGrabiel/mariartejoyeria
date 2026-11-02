@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  # Valores de prueba: las pruebas de navegador simulan la base de datos, no usan la real.
+  NEXT_PUBLIC_SUPABASE_URL: https://ci-project.supabase.co
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-publishable-key
+
+jobs:
+  checks:
+    name: Tipos, pruebas y compilación
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  e2e:
+    name: Pruebas de navegador (clientes simulados)
+    needs: checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - name: Arrancar la tienda y ejecutar las pruebas
+        run: |
+          npm start &
+          npx --yes wait-on http://localhost:3000 --timeout 60000
+          npm run test:e2e

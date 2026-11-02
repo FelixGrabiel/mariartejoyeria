@@ -37,7 +37,9 @@ export const metadata: Metadata = {
     locale: "es_PE",
     type: "website",
     siteName: site.name,
+    images: [{ url: "/og-mariarte.jpg", width: 1200, height: 630, alt: "MariArte · Joyas con significado, detalles que conectan" }],
   },
+  twitter: { card: "summary_large_image", title: site.fullName, description: site.description, images: ["/og-mariarte.jpg"] },
   // Con datos de ejemplo no se indexa. Define NEXT_PUBLIC_ALLOW_INDEXING=true en Vercel cuando cargues los datos reales.
   robots: ALLOW_INDEXING ? { index: true, follow: true } : { index: false, follow: false },
 };

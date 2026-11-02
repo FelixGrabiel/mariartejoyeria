@@ -1,7 +1,7 @@
 import type { Order, StockMovement } from "@/types";
 
 /** Pedidos FICTICIOS para el panel demo. No representan clientes reales. */
-export const initialOrders: Order[] = [
+const demoOrders: Order[] = [
   {
     id: "o-1048",
     code: "DEMO-1048",
@@ -91,7 +91,7 @@ export const initialOrders: Order[] = [
 ];
 
 /** Movimientos de inventario FICTICIOS. */
-export const initialMovements: StockMovement[] = [
+const demoMovements: StockMovement[] = [
   { id: "m-012", date: "2026-10-23", sku: "MA-DEMO-003-CO", productName: "Dúo Lazo Familiar", type: "salida", quantity: -1, note: "Pedido DEMO-1047" },
   { id: "m-011", date: "2026-10-22", sku: "MA-DEMO-010-CR", productName: "Detalle de Regalo con Dedicatoria", type: "salida", quantity: -1, note: "Pedido DEMO-1046" },
   { id: "m-010", date: "2026-10-20", sku: "MA-DEMO-010-TR", productName: "Detalle de Regalo con Dedicatoria", type: "entrada", quantity: 6, note: "Nueva producción" },
@@ -99,3 +99,8 @@ export const initialMovements: StockMovement[] = [
   { id: "m-008", date: "2026-10-16", sku: "MA-DEMO-007-DU", productName: "Dúo Ojo Turco Noche", type: "ajuste", quantity: -2, note: "Conteo físico" },
   { id: "m-007", date: "2026-10-12", sku: "MA-DEMO-005-UN", productName: "Pulsera Trébol de la Suerte", type: "entrada", quantity: 10, note: "Nueva producción" },
 ];
+
+const demo = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+/** Pedidos y movimientos locales: vacíos en producción; de demostración solo con NEXT_PUBLIC_DEMO_MODE=true. */
+export const initialOrders: Order[] = demo ? demoOrders : [];
+export const initialMovements: StockMovement[] = demo ? demoMovements : [];

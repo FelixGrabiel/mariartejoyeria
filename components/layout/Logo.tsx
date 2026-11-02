@@ -7,7 +7,7 @@ import { cn } from "@/lib/format";
  */
 export function Logo({ className, light = false }: { className?: string; light?: boolean }) {
   return (
-    <Link href="/" aria-label="MariArte, ir al inicio" className={cn("group inline-flex flex-col leading-none", className)}>
+    <Link href="/" className={cn("group inline-flex flex-col leading-none", className)}>
       <span
         className={cn(
           "font-serif text-[1.85rem] font-medium tracking-[0.01em] sm:text-[2.1rem]",

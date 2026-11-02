@@ -6,7 +6,7 @@ import type { Product } from "@/types";
  * reales de MariArte antes de publicar. Las fotos provienen de capturas de
  * Instagram de la marca y deben sustituirse por originales en alta resolución.
  */
-export const initialProducts: Product[] = [
+const demoProducts: Product[] = [
   {
     id: "p-001",
     slug: "pulsera-cruz-de-luz",
@@ -205,3 +205,6 @@ export const initialProducts: Product[] = [
     createdAt: "2026-10-20",
   },
 ];
+
+/** Catálogo local: vacío en producción. Con NEXT_PUBLIC_DEMO_MODE=true (y sin Supabase) se carga el catálogo de demostración. */
+export const initialProducts: Product[] = process.env.NEXT_PUBLIC_DEMO_MODE === "true" ? demoProducts : [];

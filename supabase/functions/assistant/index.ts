@@ -38,12 +38,12 @@ async function countUsage(filter: string): Promise<number> {
 
 async function catalogContext(): Promise<string> {
   const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/products?select=name,price,material,description,variant_name,category_id,product_variants(label,stock)&active=eq.true&order=created_at.desc&limit=60`,
+    `${SUPABASE_URL}/rest/v1/products?select=name,price,material,care,category_id,product_variants(label,stock)&active=eq.true&order=created_at.desc&limit=60`,
     { headers: { apikey: ANON_KEY, authorization: `Bearer ${ANON_KEY}` } },
   );
   if (!res.ok) return "(No se pudo leer el catálogo ahora.)";
   const rows = (await res.json()) as {
-    name: string; price: number | string; material: string; description: string; variant_name: string | null; category_id: string;
+    name: string; price: number | string; material: string; care: string | null; category_id: string;
     product_variants: { label: string; stock: number }[];
   }[];
   if (!rows.length) return "(Por ahora no hay joyas publicadas en el catálogo.)";
@@ -52,7 +52,7 @@ async function catalogContext(): Promise<string> {
       const opts = p.product_variants
         .map((v) => `${v.label}: ${v.stock <= 0 ? "agotado" : v.stock <= 2 ? "quedan pocas" : "disponible"}`)
         .join(", ");
-      return `- ${p.name} | categoría ${p.category_id} | S/ ${Number(p.price).toFixed(2)} | ${p.material} | ${opts}`;
+      return `- ${p.name} | categoría ${p.category_id} | S/ ${Number(p.price).toFixed(2)} | ${p.material} | ${opts}${p.care ? ` | cuidados: ${p.care}` : ""}`;
     })
     .join("\n");
 }
@@ -62,6 +62,7 @@ function systemPrompt(catalog: string): string {
 
 REGLAS ESTRICTAS:
 - Usa SOLO la información de este mensaje. Si algo no está aquí (precios, materiales, plazos, tarifas, horarios, descuentos, stock exacto), di que no lo sabes y sugiere escribir por WhatsApp (https://wa.me/${WHATSAPP}).
+- No des consejos generales de cuidado, tallas, significados ni otros conocimientos que no estén escritos aquí; si el usuario pregunta algo así, di que solo puedes compartir lo que indica la tienda y sugiere WhatsApp. Si la pregunta no trata de MariArte o sus productos, indica amablemente que solo puedes ayudar con la tienda.
 - NUNCA inventes productos, precios, disponibilidad, promociones ni plazos de entrega. No prometas reservas, descuentos ni fechas de reposición.
 - No hagas ni confirmes pedidos, pagos ni reembolsos: eso lo coordina la tienda por WhatsApp. Para ver el estado de un pedido, indica la página ${SITE_URL}/pedido (código y celular).
 - Los significados de las joyas son simbólicos o culturales: no prometas protección, suerte ni otros efectos reales.

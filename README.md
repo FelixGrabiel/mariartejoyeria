@@ -17,6 +17,13 @@ NEXT_PUBLIC_SUPABASE_URL=https://<tu-proyecto>.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<tu clave publishable>
 ```
 
+### Seguridad, calidad y pruebas
+
+- **Cabeceras de seguridad** (`next.config.ts`): Content-Security-Policy (solo tu proyecto de Supabase), X-Frame-Options, nosniff, Referrer-Policy y Permissions-Policy. Las fotos remotas solo se aceptan del bucket de **tu** proyecto.
+- **Datos de ejemplo:** el catálogo, los pedidos y los movimientos locales de `data/` están **vacíos en producción**. Para probar el modo demostración sin Supabase usa `NEXT_PUBLIC_DEMO_MODE=true`.
+- **Pruebas:** `npm test` (unitarias) y `npm run test:e2e` (clientes simulados en el navegador, ver `tests/e2e/`). **GitHub Actions** las corre en cada subida (`.github/workflows/ci.yml`).
+- Riesgo residual conocido: `npm audit` marca `postcss` dentro de Next 15 (solo afecta al compilar con CSS de origen no confiable); se resuelve al pasar a Next 16.
+
 ### Mejoras V2 · Fase A (hecha)
 
 | Qué | Dónde |
