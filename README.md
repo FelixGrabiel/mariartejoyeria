@@ -87,6 +87,7 @@ En una joya agotada, el cliente puede **consultar por WhatsApp** o **dejar su co
 - **Respaldo:** botón «Descargar respaldo» en `/admin` (JSON con todas las tablas). Descárgalo cada semana y guárdalo fuera de la nube del proyecto; revisa además en Supabase → Database → Backups lo que incluye tu plan.
 - **Errores del navegador:** `app/error.tsx` y `ErrorReporter` los envían a la tabla `client_errors` (sin datos personales). Requiere ejecutar `supabase/migrations/20261102140000_registro_de_errores_del_navegador.sql` en el SQL Editor de Supabase; sin ella el sitio funciona igual y el envío falla en silencio.
 - **Visitas y velocidad:** Vercel Analytics y Speed Insights, apagados por defecto. Actívalos en el panel de Vercel (Analytics / Speed Insights) y define `NEXT_PUBLIC_VERCEL_ANALYTICS=true`.
+- **Gráficos de ventas** en `/admin` → Resumen (7, 30 o 90 días): ventas por día, vendido, pedidos, ticket promedio, por confirmar, productos más vendidos, ventas por zona y pedidos por estado. «Vendido» cuenta pedidos confirmados, preparados, enviados o entregados (incluye envío). Lógica en `lib/sales.ts`. El menú del panel está agrupado por temas.
 - **Asistente con IA:** su texto ya conoce las zonas de envío, las políticas y el Libro de Reclamaciones.
 
 **Pendiente (Fase C y cupones):** cupones con código, guías de tallas y cuidados por material, aviso de reposición, video del producto, catálogo en PDF, QR/enlaces compartibles, reseñas autorizadas, indicadores avanzados, historial de inventario con usuario y exportaciones.

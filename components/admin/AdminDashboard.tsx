@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useStore } from "@/context/StoreContext";
 import { useToast } from "@/context/ToastContext";
 import { downloadBackup } from "@/lib/backup";
+import { isSold, orderValue } from "@/lib/sales";
 import { lowStockVariants } from "@/lib/catalog";
 import { cn, formatPrice } from "@/lib/format";
 import type { OrderStatus } from "@/types";
@@ -19,8 +20,9 @@ import { RestockPanel } from "./RestockPanel";
 import { ShippingPanel } from "./ShippingPanel";
 import { LegalPanel } from "./LegalPanel";
 import { ComplaintsPanel } from "./ComplaintsPanel";
-import { OrdersTable, orderStatuses, orderTotal } from "./OrdersTable";
+import { OrdersTable, orderStatuses } from "./OrdersTable";
 import { ProductsTable } from "./ProductsTable";
+import { SalesCharts } from "./SalesCharts";
 import { StatCard } from "./StatCard";
 
 export function AdminDashboard() {
@@ -35,7 +37,7 @@ export function AdminDashboard() {
   const pending = orders.filter((o) => o.status === "pendiente").length;
   const pendingAlerts = restockRequests.filter((r) => r.status === "pendiente").length;
   const pendingComplaints = complaints.filter((c) => c.status === "pendiente").length;
-  const sales = orders.filter((o) => o.status !== "cancelado").reduce((sum, o) => sum + orderTotal(o), 0);
+  const sales = orders.filter((o) => isSold(o.status)).reduce((sum, o) => sum + orderValue(o), 0);
   const lowStock = lowStockVariants(products.filter((p) => p.active));
   const title = adminSections.find((s) => s.id === section)?.label ?? "Resumen";
 
@@ -115,7 +117,7 @@ export function AdminDashboard() {
                   <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     <StatCard label="Productos activos" value={active} hint={`${products.length - active} oculto(s)`} icon={<Package size={17} />} />
                     <StatCard label={authRequired ? "Pedidos" : "Pedidos de ejemplo"} value={orders.length} hint={`${pending} pendiente(s) de atender`} icon={<ClipboardList size={17} />} />
-                    <StatCard label={authRequired ? "Ventas" : "Ventas simuladas"} value={formatPrice(sales)} hint={authRequired ? "Pedidos no cancelados · productos + envío confirmado" : "Pedidos no cancelados · ficticio"} icon={<Sparkles size={17} />} />
+                    <StatCard label={authRequired ? "Ventas" : "Ventas simuladas"} value={formatPrice(sales)} hint={authRequired ? "Pedidos confirmados o más avanzados · incluye envío" : "Pedidos no cancelados · ficticio"} icon={<Sparkles size={17} />} />
                     <StatCard
                       label="Alertas de stock"
                       value={lowStock.length}
@@ -124,6 +126,8 @@ export function AdminDashboard() {
                       tone={lowStock.length ? "warning" : "default"}
                     />
                   </div>
+
+                  <SalesCharts />
 
                   <div className="grid gap-6 xl:grid-cols-[1fr_340px]">
                     <section aria-labelledby="recent-orders" className="min-w-0">
