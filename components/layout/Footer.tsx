@@ -34,7 +34,7 @@ const columns = [
     links: [
       { href: "/politicas#terminos", label: "Términos y condiciones" },
       { href: "/politicas#privacidad", label: "Política de privacidad" },
-      { href: "/politicas#reclamaciones", label: "Libro de Reclamaciones" },
+      { href: "/reclamaciones", label: "Libro de Reclamaciones" },
     ],
   },
 ];

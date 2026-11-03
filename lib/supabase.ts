@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { normalizePhone, type Customer } from "@/lib/customer";
-import type { CartItem, Combo, RestockRequest, ComboCartItem, CategoryId, MaterialType, MeaningTheme, Order, OrderStatus, PackagingOption, Product, StockMovement } from "@/types";
+import type { CartItem, Combo, Complaint, LegalSection, ShippingZone, RestockRequest, ComboCartItem, CategoryId, MaterialType, MeaningTheme, Order, OrderStatus, PackagingOption, Product, StockMovement } from "@/types";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -84,7 +84,7 @@ export async function fetchAdminData(): Promise<{ products: Product[]; orders: O
     supabase.from("products").select("*, product_variants(sku,label,stock,sort_order,min_stock), product_themes(theme_id)").order("created_at", { ascending: false }),
     supabase
       .from("orders")
-      .select("id,code,customer_name,customer_phone,address,district,channel,status,created_at,order_items(product_id,product_name,variant_label,quantity,unit_price,occasion,packaging_name,packaging_price,dedication,meaning_card,combo_name,combo_group)")
+      .select("id,code,customer_name,customer_phone,address,district,channel,status,created_at,shipping_zone_name,shipping_cost,shipping_pending,order_items(product_id,product_name,variant_label,quantity,unit_price,occasion,packaging_name,packaging_price,dedication,meaning_card,combo_name,combo_group)")
       .order("created_at", { ascending: false })
       .order("code", { ascending: false }),
     supabase.from("inventory_movements").select("*").order("date", { ascending: false }).order("id", { ascending: false }),
@@ -102,6 +102,9 @@ export async function fetchAdminData(): Promise<{ products: Product[]; orders: O
       channel: r.channel,
       status: r.status,
       createdAt: r.created_at,
+      shippingZone: r.shipping_zone_name ?? undefined,
+      shippingCost: Number(r.shipping_cost ?? 0),
+      shippingPending: Boolean(r.shipping_pending),
       items: (r.order_items ?? []).map((i: {
         product_id: string | null;
         product_name: string;
@@ -211,6 +214,13 @@ export async function dbUpdateOrderStatus(orderId: string, status: OrderStatus):
   return error?.message ?? null;
 }
 
+/** El administrador fija el costo final de envío (por ejemplo, de una zona «por confirmar»). */
+export async function dbUpdateOrderShipping(orderId: string, cost: number): Promise<DbResult> {
+  if (!supabase) return "Supabase no está configurado.";
+  const { error } = await supabase.from("orders").update({ shipping_cost: cost, shipping_pending: false }).eq("id", orderId);
+  return error?.message ?? null;
+}
+
 export async function dbSetStock(sku: string, stock: number, movement: StockMovement): Promise<DbResult> {
   if (!supabase) return "Supabase no está configurado.";
   const { error } = await supabase.from("product_variants").update({ stock }).eq("sku", sku);
@@ -225,9 +235,11 @@ export async function dbCreateOrder(
   items: CartItem[],
   customer: Customer,
   combos: ComboCartItem[] = [],
+  shippingZoneId = "",
 ): Promise<{ code: string } | { error: string }> {
   if (!supabase) return { error: "Supabase no está configurado." };
-  const { data, error } = await supabase.rpc("place_order", {
+  const { data, error } = await supabase.rpc("place_order_v2", {
+    p_shipping_zone: shippingZoneId,
     p_customer_name: customer.name.trim(),
     p_phone: normalizePhone(customer.phone),
     p_district: customer.district.trim(),
@@ -263,17 +275,19 @@ export interface StoreConfig {
   packaging: PackagingOption[];
   themes: MeaningTheme[];
   dedicationMax: number;
+  shippingZones: ShippingZone[];
 }
 
 /** Con sesión de administrador devuelve también lo inactivo (por RLS); sin sesión, solo lo activo. */
 export async function fetchStoreConfig(): Promise<StoreConfig | null> {
   if (!supabase) return null;
-  const [pk, th, st] = await Promise.all([
+  const [pk, th, st, sz] = await Promise.all([
     supabase.from("packaging_options").select("*").order("sort_order"),
     supabase.from("meaning_themes").select("*").order("sort_order"),
     supabase.from("store_settings").select("key,value").eq("key", "dedication_max_chars").maybeSingle(),
+    supabase.from("shipping_zones").select("*").order("sort_order").order("name"),
   ]);
-  if (pk.error || th.error) return null;
+  if (pk.error || th.error || sz.error) return null;
   const max = Number(st.data?.value);
   return {
     packaging: (pk.data ?? []).map((r) => ({
@@ -292,7 +306,42 @@ export async function fetchStoreConfig(): Promise<StoreConfig | null> {
       sortOrder: r.sort_order,
     })),
     dedicationMax: Number.isInteger(max) && max > 0 ? max : 150,
+    shippingZones: (sz.data ?? []).map(rowToZone),
   };
+}
+
+function rowToZone(r: { id: string; name: string; price: number | string | null; free_from: number | string | null; eta: string; pickup: boolean; active: boolean; sort_order: number }): ShippingZone {
+  return {
+    id: r.id,
+    name: r.name,
+    price: r.price === null ? null : Number(r.price),
+    freeFrom: r.free_from === null ? null : Number(r.free_from),
+    eta: r.eta,
+    pickup: r.pickup,
+    active: r.active,
+    sortOrder: r.sort_order,
+  };
+}
+
+export async function dbSaveShippingZone(z: ShippingZone): Promise<DbResult> {
+  if (!supabase) return "Supabase no está configurado.";
+  const { error } = await supabase.from("shipping_zones").upsert({
+    id: z.id,
+    name: z.name,
+    price: z.price,
+    free_from: z.freeFrom,
+    eta: z.eta,
+    pickup: z.pickup,
+    active: z.active,
+    sort_order: z.sortOrder,
+  });
+  return error?.message ?? null;
+}
+
+export async function dbDeleteShippingZone(id: string): Promise<DbResult> {
+  if (!supabase) return "Supabase no está configurado.";
+  const { error } = await supabase.from("shipping_zones").delete().eq("id", id);
+  return error?.message ?? null;
 }
 
 export async function dbSavePackaging(p: PackagingOption): Promise<DbResult> {
@@ -342,6 +391,11 @@ export interface TrackedOrder {
   code: string;
   status: OrderStatus;
   created_at: string;
+  subtotal?: number;
+  shipping_zone?: string | null;
+  shipping_cost?: number;
+  shipping_pending?: boolean;
+  total?: number;
   items: { name: string; variant: string; quantity: number; occasion: string | null; packaging: string | null; combo?: string | null }[];
 }
 
@@ -527,4 +581,128 @@ export async function invokeNotifyRestock(): Promise<NotifyResult | { error: str
   const { data, error } = await supabase.functions.invoke("notify-restock", { body: {} });
   if (error) return { error: "No se pudo ejecutar el envío. Inténtalo de nuevo." };
   return data as NotifyResult;
+}
+
+// ---------- Textos legales, datos del negocio y Libro de Reclamaciones ----------
+
+export const BUSINESS_KEYS = ["biz_legal_name", "biz_ruc", "biz_address", "biz_email", "biz_phone", "biz_city", "biz_payment_methods", "change_days", "complaints_days"] as const;
+export type BusinessKey = (typeof BUSINESS_KEYS)[number];
+export type BusinessInfo = Record<BusinessKey, string>;
+
+export const emptyBusiness: BusinessInfo = {
+  biz_legal_name: "",
+  biz_ruc: "",
+  biz_address: "",
+  biz_email: "",
+  biz_phone: "",
+  biz_city: "",
+  biz_payment_methods: "",
+  change_days: "7",
+  complaints_days: "15",
+};
+
+export async function fetchBusinessInfo(): Promise<BusinessInfo | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase.from("store_settings").select("key,value").in("key", [...BUSINESS_KEYS]);
+  if (error || !data) return null;
+  const info = { ...emptyBusiness };
+  for (const row of data) if ((BUSINESS_KEYS as readonly string[]).includes(row.key)) info[row.key as BusinessKey] = row.value ?? "";
+  return info;
+}
+
+export async function dbSaveBusinessInfo(info: BusinessInfo): Promise<DbResult> {
+  if (!supabase) return "Supabase no está configurado.";
+  const { error } = await supabase.from("store_settings").upsert(BUSINESS_KEYS.map((key) => ({ key, value: info[key].trim() })));
+  return error?.message ?? null;
+}
+
+export async function fetchLegalSections(): Promise<LegalSection[] | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase.from("legal_sections").select("*").order("sort_order");
+  if (error || !data) return null;
+  return data.map((r) => ({ id: r.id, title: r.title, body: r.body, sortOrder: r.sort_order }));
+}
+
+export async function dbSaveLegalSection(s: LegalSection): Promise<DbResult> {
+  if (!supabase) return "Supabase no está configurado.";
+  const { error } = await supabase.from("legal_sections").update({ title: s.title, body: s.body, updated_at: new Date().toISOString() }).eq("id", s.id);
+  return error?.message ?? null;
+}
+
+export interface ComplaintInput {
+  name: string;
+  docType: string;
+  docNumber: string;
+  address: string;
+  phone: string;
+  email: string;
+  guardian: string;
+  itemType: "producto" | "servicio";
+  itemDescription: string;
+  amount: string;
+  kind: "reclamo" | "queja";
+  detail: string;
+  request: string;
+  orderCode: string;
+  consent: boolean;
+}
+
+/** Registra un reclamo o queja en el Libro de Reclamaciones virtual. Devuelve el número de hoja. */
+export async function dbSubmitComplaint(c: ComplaintInput): Promise<{ number: string; createdAt: string } | { error: string }> {
+  if (!supabase) return { error: "El Libro de Reclamaciones no está disponible en este momento." };
+  const amount = c.amount.trim() ? Number(c.amount.replace(",", ".")) : null;
+  const { data, error } = await supabase.rpc("submit_complaint", {
+    p_name: c.name,
+    p_doc_type: c.docType,
+    p_doc_number: c.docNumber,
+    p_address: c.address,
+    p_phone: c.phone,
+    p_email: c.email,
+    p_item_type: c.itemType,
+    p_item_description: c.itemDescription,
+    p_amount: amount,
+    p_kind: c.kind,
+    p_detail: c.detail,
+    p_request: c.request,
+    p_order_code: c.orderCode,
+    p_guardian: c.guardian,
+    p_consent: c.consent,
+  });
+  if (error) return { error: error.message };
+  const row = data as { number: string; created_at: string };
+  return { number: row.number, createdAt: row.created_at };
+}
+
+export async function fetchComplaints(): Promise<Complaint[] | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase.from("complaints").select("*").order("created_at", { ascending: false });
+  if (error || !data) return null;
+  return data.map((r) => ({
+    id: r.id,
+    number: r.number,
+    createdAt: r.created_at,
+    consumerName: r.consumer_name,
+    docType: r.doc_type,
+    docNumber: r.doc_number,
+    address: r.address,
+    phone: r.phone,
+    email: r.email,
+    guardianName: r.guardian_name ?? undefined,
+    itemType: r.item_type,
+    itemDescription: r.item_description,
+    amount: r.amount === null ? undefined : Number(r.amount),
+    kind: r.kind,
+    detail: r.detail,
+    request: r.request,
+    orderCode: r.order_code ?? undefined,
+    status: r.status,
+    response: r.response ?? undefined,
+    respondedAt: r.responded_at ?? undefined,
+  }));
+}
+
+export async function dbRespondComplaint(id: number, response: string): Promise<DbResult> {
+  if (!supabase) return "Supabase no está configurado.";
+  const { error } = await supabase.from("complaints").update({ status: "respondido", response: response.trim(), responded_at: new Date().toISOString() }).eq("id", id);
+  return error?.message ?? null;
 }

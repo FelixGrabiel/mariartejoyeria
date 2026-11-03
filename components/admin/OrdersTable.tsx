@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useStore } from "@/context/StoreContext";
 import { useToast } from "@/context/ToastContext";
 import { cn, formatDate, formatPrice } from "@/lib/format";
@@ -17,8 +18,51 @@ export const statusTone: Record<OrderStatus, BadgeTone> = {
   cancelado: "danger",
 };
 
-export function orderTotal(order: Order): number {
+export function orderSubtotal(order: Order): number {
   return order.items.reduce((sum, i) => sum + i.quantity * (i.unitPrice + (i.packagingPrice ?? 0)), 0);
+}
+
+/** Productos + envío ya confirmado. */
+export function orderTotal(order: Order): number {
+  return orderSubtotal(order) + (order.shippingCost ?? 0);
+}
+
+function ShippingCell({ order }: { order: Order }) {
+  const { updateOrderShipping } = useStore();
+  const { showToast } = useToast();
+  const [value, setValue] = useState("");
+  if (!order.shippingZone) return null;
+  if (!order.shippingPending) {
+    return (
+      <p className="text-[12px] text-muted">
+        Envío {order.shippingZone}: {order.shippingCost ? formatPrice(order.shippingCost) : "gratis / sin costo"}
+      </p>
+    );
+  }
+  return (
+    <div className="mt-1 text-[12px]">
+      <p className="font-semibold text-warning">Envío {order.shippingZone}: por confirmar</p>
+      <div className="mt-1 flex items-center gap-1.5">
+        <label htmlFor={`ship-${order.id}`} className="sr-only">Costo de envío del pedido {order.code}</label>
+        <input id={`ship-${order.id}`} inputMode="decimal" className="field min-h-9 w-20 py-1 text-[12.5px]" placeholder="S/" value={value} onChange={(e) => setValue(e.target.value)} />
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm"
+          onClick={() => {
+            const amount = Number(value.replace(",", "."));
+            if (!value.trim() || Number.isNaN(amount) || amount < 0 || amount > 1000) {
+              showToast("Escribe un costo de envío entre 0 y 1,000.", { tone: "error" });
+              return;
+            }
+            updateOrderShipping(order.id, Math.round(amount * 100) / 100);
+            showToast(`Envío de ${order.code} fijado en ${formatPrice(amount)}.`);
+          }}
+        >
+          Fijar
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export function OrdersTable({ orders, compact = false }: { orders: Order[]; compact?: boolean }) {
@@ -88,7 +132,14 @@ export function OrdersTable({ orders, compact = false }: { orders: Order[]; comp
                 </td>
               )}
               <td className="whitespace-nowrap px-4 py-3.5 text-muted">{formatDate(order.createdAt)}</td>
-              <td className="px-4 py-3.5 text-right font-semibold tabular-nums">{formatPrice(orderTotal(order))}</td>
+              <td className="px-4 py-3.5 text-right">
+                <p className="font-semibold tabular-nums">{formatPrice(orderTotal(order))}</p>
+                {order.shippingZone && !compact && (
+                  <div className="text-left sm:text-right">
+                    <ShippingCell order={order} />
+                  </div>
+                )}
+              </td>
               <td className="px-4 py-3.5">
                 {compact ? (
                   <Badge tone={statusTone[order.status]}>{order.status}</Badge>

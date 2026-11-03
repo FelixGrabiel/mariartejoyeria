@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { cn, formatDate } from "@/lib/format";
+import { cn, formatDate, formatPrice } from "@/lib/format";
 import { normalizePhone } from "@/lib/customer";
 import { dbTrackOrder, supabase, type TrackedOrder } from "@/lib/supabase";
 import { Check } from "@/components/ui/icons";
@@ -124,6 +124,26 @@ export function OrderTracker() {
               </li>
             ))}
           </ul>
+          {typeof order.total === "number" && (
+            <dl className="mt-4 space-y-1.5 border-t border-line pt-4 text-[14px]">
+              <div className="flex justify-between">
+                <dt className="text-muted">Productos</dt>
+                <dd className="tabular-nums">{formatPrice(order.subtotal ?? 0)}</dd>
+              </div>
+              {order.shipping_zone && (
+                <div className="flex justify-between">
+                  <dt className="text-muted">Envío · {order.shipping_zone}</dt>
+                  <dd className="tabular-nums">
+                    {order.shipping_pending ? "por confirmar" : order.shipping_cost ? formatPrice(order.shipping_cost) : "gratis"}
+                  </dd>
+                </div>
+              )}
+              <div className="flex justify-between font-semibold">
+                <dt>{order.shipping_pending ? "Total (sin envío)" : "Total"}</dt>
+                <dd className="tabular-nums">{formatPrice(order.total)}</dd>
+              </div>
+            </dl>
+          )}
           <p className="mt-4 text-[12px] text-muted">El precio final, el pago y el envío se confirman por WhatsApp.</p>
         </section>
       )}

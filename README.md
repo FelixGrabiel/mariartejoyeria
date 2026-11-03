@@ -68,6 +68,19 @@ En una joya agotada, el cliente puede **consultar por WhatsApp** o **dejar su co
 - **Aviso automático al volver el stock:** al reponer stock, los avisos pendientes quedan «listos para avisar». La función `notify-restock` envía un correo (cada 5 minutos desde `pg_cron`, o con «Enviar correos ahora» en el panel). **Se activa cuando pones** `RESEND_API_KEY` y `FROM_EMAIL` (por ejemplo `MariArte <avisos@tudominio.com>`) en los mismos Secrets. Sin eso, no envía nada y los avisos siguen siendo manuales por WhatsApp.
 - Las funciones están en `supabase/functions/`.
 
+### Costo de envío (hecho)
+
+- En `/admin` → **Envíos** la tienda crea **zonas** con costo en S/, «envío gratis desde» un monto, plazo estimado, recojo en tienda u opción «costo por confirmar» (provincias/agencias). Puede ocultarlas o editarlas cuando quiera.
+- El cliente elige su zona en el carrito y ve el envío sumado al total; el servidor (`place_order_v2`) **vuelve a calcular** el costo, así que no se puede alterar desde el navegador. Se guarda en el pedido (zona, costo y si falta confirmarlo) y aparece en el panel, el WhatsApp y el seguimiento.
+- Si hay zonas activas, elegir una es obligatorio. Si no hay ninguna, el carrito sigue mostrando «Envío por confirmar». En un pedido con zona «por confirmar», la tienda fija el costo final en **Pedidos**.
+- El costo se calcula sobre el subtotal de productos (con descuentos de combos y empaques) y no incluye el envío en el umbral de «gratis desde».
+
+### Textos legales y Libro de Reclamaciones (hecho; falta tu información)
+
+- `/politicas` (términos, privacidad conforme a la Ley N.° 29733, envíos, cambios y devoluciones) se lee de la base de datos y se edita en `/admin` → **Negocio y legal**. Son **borradores**: conviene que un abogado los revise antes de lanzar.
+- Completa allí tus datos (razón social, RUC, domicilio, correo, ciudad, medios de pago, días de cambio). Mientras falten, el texto muestra «[por completar]» y la página lo avisa.
+- `/reclamaciones` es el Libro de Reclamaciones virtual: hoja con los datos del consumidor, número correlativo (`LR-000001-2026`), límites contra abuso y gestión en `/admin` → **Reclamos** (con contador y marca de plazo vencido).
+
 **Pendiente (Fase C y cupones):** cupones con código, guías de tallas y cuidados por material, aviso de reposición, video del producto, catálogo en PDF, QR/enlaces compartibles, reseñas autorizadas, indicadores avanzados, historial de inventario con usuario y exportaciones.
 
 ---

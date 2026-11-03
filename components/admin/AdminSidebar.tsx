@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { cn } from "@/lib/format";
-import { AlertCircle, ClipboardList, Gift, History, LayoutDashboard, Package, ShoppingBag, Sparkles, Store } from "@/components/ui/icons";
+import { AlertCircle, ClipboardList, FileText, Gift, History, LayoutDashboard, Package, ShoppingBag, Sparkles, Store, Truck } from "@/components/ui/icons";
 
-export type AdminSection = "resumen" | "productos" | "pedidos" | "inventario" | "empaques" | "significados" | "combos" | "avisos";
+export type AdminSection = "resumen" | "productos" | "pedidos" | "inventario" | "empaques" | "significados" | "combos" | "avisos" | "envios" | "negocio" | "reclamos";
 
 export const adminSections: { id: AdminSection; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "resumen", label: "Resumen", icon: LayoutDashboard },
@@ -15,6 +15,9 @@ export const adminSections: { id: AdminSection; label: string; icon: typeof Layo
   { id: "significados", label: "Significados", icon: Sparkles },
   { id: "combos", label: "Combos", icon: ShoppingBag },
   { id: "avisos", label: "Avisos de stock", icon: AlertCircle },
+  { id: "envios", label: "Envíos", icon: Truck },
+  { id: "negocio", label: "Negocio y legal", icon: FileText },
+  { id: "reclamos", label: "Reclamos", icon: ClipboardList },
 ];
 
 export function AdminSidebar({
@@ -23,9 +26,11 @@ export function AdminSidebar({
   onNavigate,
   pendingOrders = 0,
   pendingAlerts = 0,
+  pendingComplaints = 0,
   connected = false,
 }: {
   pendingAlerts?: number;
+  pendingComplaints?: number;
   connected?: boolean;
   pendingOrders?: number;
   current: AdminSection;
@@ -62,6 +67,11 @@ export function AdminSidebar({
                 {id === "avisos" && pendingAlerts > 0 && (
                   <span className="rounded-full bg-rose px-2 py-0.5 text-[11px] font-bold text-white" aria-label={`${pendingAlerts} avisos pendientes`}>
                     {pendingAlerts}
+                  </span>
+                )}
+                {id === "reclamos" && pendingComplaints > 0 && (
+                  <span className="rounded-full bg-rose px-2 py-0.5 text-[11px] font-bold text-white" aria-label={`${pendingComplaints} reclamos pendientes`}>
+                    {pendingComplaints}
                   </span>
                 )}
                 {id === "pedidos" && pendingOrders > 0 && (

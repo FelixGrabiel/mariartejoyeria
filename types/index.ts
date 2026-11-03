@@ -170,6 +170,53 @@ export interface Order {
   createdAt: string;
   status: OrderStatus;
   items: OrderItem[];
+  /** Envío guardado al crear el pedido: zona elegida, costo en soles y si falta confirmarlo con la tienda. */
+  shippingZone?: string;
+  shippingCost?: number;
+  shippingPending?: boolean;
+}
+
+/** Zona de envío con su tarifa. `price` null = el costo se confirma por WhatsApp. */
+export interface ShippingZone {
+  id: string;
+  name: string;
+  price: number | null;
+  /** Envío gratis cuando el subtotal llega a este monto (opcional). */
+  freeFrom: number | null;
+  eta: string;
+  pickup: boolean;
+  active: boolean;
+  sortOrder: number;
+}
+
+export interface LegalSection {
+  id: string;
+  title: string;
+  body: string;
+  sortOrder: number;
+}
+
+export interface Complaint {
+  id: number;
+  number: string;
+  createdAt: string;
+  consumerName: string;
+  docType: string;
+  docNumber: string;
+  address: string;
+  phone: string;
+  email: string;
+  guardianName?: string;
+  itemType: "producto" | "servicio";
+  itemDescription: string;
+  amount?: number;
+  kind: "reclamo" | "queja";
+  detail: string;
+  request: string;
+  orderCode?: string;
+  status: "pendiente" | "respondido";
+  response?: string;
+  respondedAt?: string;
 }
 
 export type StockMovementType = "entrada" | "salida" | "ajuste";

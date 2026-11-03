@@ -89,11 +89,18 @@ async function setupContext(browser, state, opts = {}) {
       const rows = [{ key: "dedication_max_chars", value: String(state.dedMax) }];
       return (req.headers()["accept"] || "").includes("pgrst.object") ? json(route, rows[0]) : json(route, rows);
     }
-    if (p === "rpc/place_order") {
+    if (p === "shipping_zones") return json(route, state.zones || []);
+    if (p === "rpc/submit_complaint") {
+      state.complaints = state.complaints || [];
+      state.complaints.push(JSON.parse(req.postData() || "{}"));
+      return json(route, { number: "LR-000001-2026", created_at: "2026-11-02T10:00:00Z" });
+    }
+    if (p === "rpc/place_order_v2") {
       const body = JSON.parse(req.postData() || "{}");
       state.payloads.push(body);
       if (state.mode === "slow") await new Promise((r) => setTimeout(r, 1200));
       if (state.mode === "error") return json(route, { code: "P0001", message: "Stock insuficiente para completar el pedido", details: null, hint: null }, 400);
+      if (state.mode === "zone-error") return json(route, { code: "P0001", message: "La zona de envío elegida ya no está disponible" }, 400);
       return json(route, "MA-3001");
     }
     if (p === "rpc/request_restock_v2") {
@@ -107,7 +114,7 @@ async function setupContext(browser, state, opts = {}) {
       const body = JSON.parse(req.postData() || "{}");
       if (body.p_code === "MA-ERR") return json(route, { code: "P0001", message: "Demasiadas consultas. Inténtalo más tarde" }, 400);
       if (String(body.p_code).toUpperCase() === "MA-3001" && body.p_phone === "987654321")
-        return json(route, { code: "MA-3001", status: "preparado", created_at: "2026-10-26", items: [{ name: "Pulsera ojo turco", variant: "Única", quantity: 1, occasion: "Cumpleaños", packaging: "Caja de regalo", combo: null }] });
+        return json(route, { code: "MA-3001", status: "preparado", created_at: "2026-10-26", subtotal: 89, shipping_zone: "Callao", shipping_cost: 12, shipping_pending: false, total: 101, items: [{ name: "Pulsera ojo turco", variant: "Única", quantity: 1, occasion: "Cumpleaños", packaging: "Caja de regalo", combo: null }] });
       if (String(body.p_code).toUpperCase() === "MA-3002" && body.p_phone === "987654321")
         return json(route, { code: "MA-3002", status: "cancelado", created_at: "2026-10-25", items: [] });
       return json(route, null);
@@ -539,7 +546,8 @@ const browser = await chromium.launch();
     await page.getByText("Pedido MA-3001").waitFor();
     const t = await main(page);
     expect(/En preparación/.test(t) && /Pulsera ojo turco/.test(t) && /Caja de regalo/.test(t), "faltan datos del seguimiento");
-    expect(!/S\/ \d/.test(t.replace(/El precio final/, "")), "muestra precios");
+    expect(!/S\/ \d/.test(await page.locator("main ul").first().innerText()), "muestra precios por producto");
+    expect(/Total/.test(t) && /S\/ 101\.00/.test(t), "no muestra el total con envío");
   });
   await step(P, "un pedido cancelado lo dice claramente", async () => {
     await page.locator("#tr-code").fill("MA-3002");
@@ -974,6 +982,149 @@ const browser = await chromium.launch();
     await page.getByText(/dejamos tu aviso/).waitFor();
     expect(state.restock[0].p_email === "", "envió un correo vacío mal formado");
     expect(!/te enviará un correo/.test(await main(page)), "promete un correo que no pidió");
+  });
+  await ctx.close();
+}
+
+// =====================================================================
+// P15 · Cliente con zonas de envío configuradas por la tienda
+// =====================================================================
+{
+  const P = "P15 Zonas de envío";
+  const zones = [
+    { id: "lima", name: "Lima", price: 10, free_from: 150, eta: "1 a 2 días", pickup: false, active: true, sort_order: 1 },
+    { id: "callao", name: "Callao", price: 12, free_from: null, eta: "", pickup: false, active: true, sort_order: 2 },
+    { id: "provincias", name: "Provincias", price: null, free_from: null, eta: "", pickup: false, active: true, sort_order: 3 },
+    { id: "recojo", name: "Recojo en tienda", price: 0, free_from: null, eta: "", pickup: true, active: true, sort_order: 4 },
+  ];
+  const state = newState({ zones });
+  const ctx = await setupContext(browser, state);
+  const page = await newPage(ctx, P);
+  const total = async () => price(await main(page), /Total referencial\s*\n?\s*(S\/\s*[\d.]+)/);
+  const fillCustomer = async () => {
+    await page.getByLabel("Nombre").fill("Ana Pérez");
+    await page.getByLabel("Celular").fill("987654321");
+    await page.getByLabel("Distrito o ciudad").fill("Miraflores");
+  };
+  await step(P, "el carrito pide elegir la zona y mientras no la elija el pedido queda bloqueado", async () => {
+    await go(page, "/producto/san-benito-plata", 2000);
+    await page.getByRole("radio", { name: /Rojo/ }).check({ force: true });
+    await page.getByRole("button", { name: /Agregar al carrito/ }).click();
+    await go(page, "/carrito", 1500);
+    const t = await main(page);
+    expect(/Elige tu zona/.test(t), "no pide elegir la zona");
+    await fillCustomer();
+    const tag = await page.getByText("Pedir por WhatsApp").first().evaluate((n) => n.closest("a,button").tagName);
+    expect(tag === "BUTTON", "se puede pedir sin zona");
+  });
+  await step(P, "las zonas muestran su costo y plazo en el selector", async () => {
+    const opts = await page.locator("#cu-zone option").allInnerTexts();
+    expect(opts.some((o) => /Lima · S\/ 10\.00 · 1 a 2 días/.test(o)), "falta Lima: " + opts.join(" | "));
+    expect(opts.some((o) => /Provincias · costo por confirmar/.test(o)), "falta Provincias");
+    expect(opts.some((o) => /Recojo en tienda · sin costo/.test(o)), "falta el recojo");
+  });
+  await step(P, "Callao suma S/ 12 al total (89 + 12 = 101) e indica «envío incluido»", async () => {
+    await page.locator("#cu-zone").selectOption("callao");
+    const t = await main(page);
+    expect(await total() === "S/ 101.00", `total ${await total()}`);
+    expect(/envío incluido/.test(t) && /S\/ 12\.00/.test(t), "no muestra el envío");
+  });
+  await step(P, "Lima avisa cuánto falta para el envío gratis (150 - 89 = 61)", async () => {
+    await page.locator("#cu-zone").selectOption("lima");
+    const t = await main(page);
+    expect(/Te faltan S\/ 61\.00 para tener envío gratis a Lima/.test(t), "no avisa lo que falta");
+    expect(await total() === "S/ 99.00", `total ${await total()}`);
+  });
+  await step(P, "el pedido envía la zona elegida y el mensaje de WhatsApp incluye el envío y el total", async () => {
+    await page.locator("#cu-zone").selectOption("callao");
+    await page.getByText("Pedir por WhatsApp").first().click();
+    await page.waitForTimeout(900);
+    expect(state.payloads.length === 1 && state.payloads[0].p_shipping_zone === "callao", "payload sin zona: " + JSON.stringify(state.payloads[0]).slice(0, 200));
+    const wa = (await opened(page)).find((u) => u.includes("wa.me")) || "";
+    const text = decodeURIComponent(wa.split("text=")[1] || "");
+    expect(/Envío a Callao: S\/ 12\.00/.test(text) && /Total referencial: S\/ 101\.00/.test(text), "mensaje: " + text.slice(-260));
+  });
+  await step(P, "cambiar de zona crea un pedido distinto (no reutiliza el anterior)", async () => {
+    state.payloads.length = 0;
+    await page.locator("#cu-zone").selectOption("recojo");
+    await page.getByText("Pedir por WhatsApp").first().click();
+    await page.waitForTimeout(900);
+    expect(state.payloads.length === 1 && state.payloads[0].p_shipping_zone === "recojo", "reutilizó el pedido anterior");
+    const wa = (await opened(page)).filter((u) => u.includes("wa.me")).at(-1) || "";
+    expect(/Recojo: Recojo en tienda: sin costo/.test(decodeURIComponent(wa.split("text=")[1] || "")), "el mensaje de recojo no es correcto");
+  });
+  await step(P, "una zona «por confirmar» no suma nada y lo dice claro", async () => {
+    await page.locator("#cu-zone").selectOption("provincias");
+    const t = await main(page);
+    expect(/Por confirmar/.test(t) && await total() === "S/ 89.00" && /sin incluir envío/.test(t), "total o texto incorrecto");
+    expect(/por confirmar con la tienda|te dirá el costo/i.test(t), "no explica cómo se confirma");
+  });
+  await step(P, "con 2 unidades Lima pasa a envío gratis (178)", async () => {
+    await page.locator("#cu-zone").selectOption("lima");
+    await page.getByRole("button", { name: "Aumentar cantidad" }).click();
+    await page.waitForTimeout(400);
+    const t = await main(page);
+    expect(/Gratis/.test(t) && await total() === "S/ 178.00", `total ${await total()} / ${t.slice(0, 80)}`);
+  });
+  await step(P, "el servidor rechaza una zona que ya no existe y se avisa al cliente", async () => {
+    state.mode = "zone-error";
+    await page.getByLabel("Dirección (opcional)").fill("Prueba zona");
+    await page.getByText("Pedir por WhatsApp").first().click();
+    await page.waitForTimeout(900);
+    expect(/La zona de envío elegida ya no está disponible/.test(await page.locator("body").innerText()), "no mostró el error");
+    state.mode = "ok";
+  });
+  await step(P, "el seguimiento muestra productos, envío y total", async () => {
+    await go(page, "/pedido", 1500);
+    await page.locator("#tr-code").fill("MA-3001");
+    await page.locator("#tr-phone").fill("987654321");
+    await page.getByRole("button", { name: "Ver estado" }).click();
+    await page.getByText(/Envío · Callao/).waitFor();
+    const t = await main(page);
+    expect(/S\/ 12\.00/.test(t) && /S\/ 101\.00/.test(t), "no muestra el desglose: " + t.slice(-200));
+  });
+  await ctx.close();
+}
+
+// =====================================================================
+// P16 · Libro de Reclamaciones virtual
+// =====================================================================
+{
+  const P = "P16 Libro de Reclamaciones";
+  const state = newState();
+  const ctx = await setupContext(browser, state);
+  const page = await newPage(ctx, P);
+  await step(P, "la página existe, tiene título y el formulario con los campos exigidos", async () => {
+    await go(page, "/reclamaciones", 1800);
+    expect(await page.getByRole("heading", { level: 1, name: "Libro de Reclamaciones" }).count() === 1, "falta el título");
+    for (const id of ["#lr-name", "#lr-doc", "#lr-address", "#lr-phone", "#lr-email", "#lr-item", "#lr-detail", "#lr-request"]) expect(await page.locator(id).count() === 1, "falta el campo " + id);
+  });
+  await step(P, "enviar vacío muestra los errores y no registra nada", async () => {
+    await page.getByRole("button", { name: "Enviar al Libro de Reclamaciones" }).click();
+    const t = await main(page);
+    expect(/Escribe tu nombre completo/.test(t) && /El DNI tiene 8 dígitos/.test(t) && /aceptar el tratamiento/.test(t), "faltan mensajes de error");
+    expect((state.complaints || []).length === 0, "registró un reclamo vacío");
+  });
+  await step(P, "con datos válidos registra el reclamo y entrega el número de hoja", async () => {
+    await page.locator("#lr-name").fill("Luis Cliente");
+    await page.locator("#lr-doc").fill("12345678");
+    await page.locator("#lr-address").fill("Av. Lima 123, Lima");
+    await page.locator("#lr-phone").fill("987654321");
+    await page.locator("#lr-email").fill("luis@correo.com");
+    await page.locator("#lr-item").fill("Pulsera San Benito");
+    await page.locator("#lr-detail").fill("La pulsera llegó con el cierre roto.");
+    await page.locator("#lr-request").fill("Quiero un cambio.");
+    await page.getByRole("checkbox").check();
+    await page.getByRole("button", { name: "Enviar al Libro de Reclamaciones" }).click();
+    await page.getByText(/Registramos tu reclamo/).waitFor();
+    const b = state.complaints[0];
+    expect(b.p_doc_type === "DNI" && b.p_doc_number === "12345678" && b.p_kind === "reclamo" && b.p_consent === true, "payload: " + JSON.stringify(b).slice(0, 200));
+    expect(/LR-000001-2026/.test(await main(page)), "no muestra el número de hoja");
+  });
+  await step(P, "el pie de página y las políticas enlazan al Libro de Reclamaciones", async () => {
+    await go(page, "/politicas", 1500);
+    expect(await page.locator("footer a[href='/reclamaciones']").count() === 1, "falta el enlace en el pie");
+    expect(await page.locator("main a[href='/reclamaciones']").count() >= 1, "falta el enlace en políticas");
   });
   await ctx.close();
 }

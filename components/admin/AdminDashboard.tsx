@@ -15,12 +15,15 @@ import { PackagingPanel, ThemesPanel } from "./GiftAdminPanels";
 import { CombosPanel } from "./CombosPanel";
 import { InventoryPanel } from "./InventoryPanel";
 import { RestockPanel } from "./RestockPanel";
+import { ShippingPanel } from "./ShippingPanel";
+import { LegalPanel } from "./LegalPanel";
+import { ComplaintsPanel } from "./ComplaintsPanel";
 import { OrdersTable, orderStatuses, orderTotal } from "./OrdersTable";
 import { ProductsTable } from "./ProductsTable";
 import { StatCard } from "./StatCard";
 
 export function AdminDashboard() {
-  const { hydrated, products, orders, restockRequests, resetDemo, authRequired, authChecked, isAdmin, adminEmail, signOut } = useStore();
+  const { hydrated, products, orders, restockRequests, complaints, resetDemo, authRequired, authChecked, isAdmin, adminEmail, signOut } = useStore();
   const { showToast } = useToast();
   const [section, setSection] = useState<AdminSection>("resumen");
   const [navOpen, setNavOpen] = useState(false);
@@ -30,6 +33,7 @@ export function AdminDashboard() {
   const active = products.filter((p) => p.active).length;
   const pending = orders.filter((o) => o.status === "pendiente").length;
   const pendingAlerts = restockRequests.filter((r) => r.status === "pendiente").length;
+  const pendingComplaints = complaints.filter((c) => c.status === "pendiente").length;
   const sales = orders.filter((o) => o.status !== "cancelado").reduce((sum, o) => sum + orderTotal(o), 0);
   const lowStock = lowStockVariants(products.filter((p) => p.active));
   const title = adminSections.find((s) => s.id === section)?.label ?? "Resumen";
@@ -40,7 +44,7 @@ export function AdminDashboard() {
   return (
     <div className="min-h-dvh bg-[#faf5f2] lg:grid lg:grid-cols-[256px_1fr]">
       <aside className="hidden bg-ink px-5 py-7 lg:sticky lg:top-0 lg:block lg:h-dvh">
-        <AdminSidebar current={section} onSelect={setSection} pendingOrders={pending} pendingAlerts={pendingAlerts} connected={authRequired} />
+        <AdminSidebar current={section} onSelect={setSection} pendingOrders={pending} pendingAlerts={pendingAlerts} pendingComplaints={pendingComplaints} connected={authRequired} />
       </aside>
 
       <Modal
@@ -52,7 +56,7 @@ export function AdminDashboard() {
         panelClassName="!bg-ink text-ink [&_.icon-btn]:bg-ivory"
       >
         <div className="h-full pt-2">
-          <AdminSidebar current={section} onSelect={setSection} onNavigate={() => setNavOpen(false)} pendingOrders={pending} pendingAlerts={pendingAlerts} connected={authRequired} />
+          <AdminSidebar current={section} onSelect={setSection} onNavigate={() => setNavOpen(false)} pendingOrders={pending} pendingAlerts={pendingAlerts} pendingComplaints={pendingComplaints} connected={authRequired} />
         </div>
       </Modal>
 
@@ -97,7 +101,7 @@ export function AdminDashboard() {
                   <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     <StatCard label="Productos activos" value={active} hint={`${products.length - active} oculto(s)`} icon={<Package size={17} />} />
                     <StatCard label={authRequired ? "Pedidos" : "Pedidos de ejemplo"} value={orders.length} hint={`${pending} pendiente(s) de atender`} icon={<ClipboardList size={17} />} />
-                    <StatCard label={authRequired ? "Ventas" : "Ventas simuladas"} value={formatPrice(sales)} hint={authRequired ? "Pedidos no cancelados · total referencial, sin envío" : "Pedidos no cancelados · ficticio"} icon={<Sparkles size={17} />} />
+                    <StatCard label={authRequired ? "Ventas" : "Ventas simuladas"} value={formatPrice(sales)} hint={authRequired ? "Pedidos no cancelados · productos + envío confirmado" : "Pedidos no cancelados · ficticio"} icon={<Sparkles size={17} />} />
                     <StatCard
                       label="Alertas de stock"
                       value={lowStock.length}
@@ -185,6 +189,12 @@ export function AdminDashboard() {
               {section === "combos" && <CombosPanel />}
 
               {section === "avisos" && <RestockPanel />}
+
+              {section === "envios" && <ShippingPanel />}
+
+              {section === "negocio" && <LegalPanel />}
+
+              {section === "reclamos" && <ComplaintsPanel />}
             </>
           )}
         </main>

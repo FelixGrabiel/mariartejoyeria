@@ -1,17 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useStore } from "@/context/StoreContext";
 import { emptyCustomer, isCustomerValid, validateCustomer, type Customer } from "@/lib/customer";
 import { readStorage, writeStorage } from "@/lib/storage";
 import { supabase } from "@/lib/supabase";
 import { formatPrice } from "@/lib/format";
-import { buildOrderMessage } from "@/lib/whatsapp";
+import { missingForFreeShipping, shippingQuote } from "@/lib/shipping";
+import { buildOrderMessage, type ShippingInfo } from "@/lib/whatsapp";
 import { ChevronDown, Info } from "@/components/ui/icons";
 import { WhatsAppCheckoutButton } from "./WhatsAppCheckoutButton";
 
 export function CartSummary() {
-  const { cartLines, comboLines, cartSubtotal, giftNote } = useStore();
+  const { cartLines, comboLines, cartSubtotal, giftNote, activeShippingZones } = useStore();
   const valid = cartLines.filter((l) => !l.issue);
   const validCombos = comboLines.filter((l) => !l.issue);
   const units =
@@ -24,8 +25,25 @@ export function CartSummary() {
   const needsContact = Boolean(supabase);
   const errors = validateCustomer(customer);
   const contactOk = !needsContact || isCustomerValid(customer);
-  const message = buildOrderMessage(cartLines, giftNote, needsContact ? customer : undefined, undefined, comboLines);
+  const [zoneId, setZoneId] = useState("");
+  const zone = activeShippingZones.find((z) => z.id === zoneId);
+  const zonesMode = needsContact && activeShippingZones.length > 0;
+  const quote = shippingQuote(zone, cartSubtotal);
+  const missingFree = missingForFreeShipping(zone, cartSubtotal);
+  const shipping: ShippingInfo | undefined = useMemo(
+    () => (zonesMode && zone ? { zone: zone.name, cost: quote.cost, free: quote.free, pickup: zone.pickup } : undefined),
+    [zonesMode, zone, quote.cost, quote.free],
+  );
+  const total = cartSubtotal + (quote.cost ?? 0);
+  const zoneOk = !zonesMode || Boolean(zone);
+  const message = buildOrderMessage(cartLines, giftNote, needsContact ? customer : undefined, undefined, comboLines, shipping);
 
+  useEffect(() => {
+    setZoneId(readStorage<string>("mariarte.v1.shippingZone", ""));
+  }, []);
+  useEffect(() => {
+    writeStorage("mariarte.v1.shippingZone", zoneId);
+  }, [zoneId]);
   useEffect(() => {
     setCustomer(readStorage<Customer>("mariarte.v1.customer", emptyCustomer));
   }, []);
@@ -52,20 +70,45 @@ export function CartSummary() {
           </div>
         )}
         <div className="flex justify-between">
-          <dt className="text-muted">Envío</dt>
-          <dd className="font-medium text-rose-deep">Por confirmar</dd>
+          <dt className="text-muted">{zone?.pickup ? "Recojo" : "Envío"}</dt>
+          <dd className={quote.cost === null ? "font-medium text-rose-deep" : quote.free || quote.cost === 0 ? "font-semibold text-success" : "font-semibold tabular-nums"}>
+            {!zone ? (zonesMode ? "Elige tu zona" : "Por confirmar") : quote.cost === null ? "Por confirmar" : quote.free ? "Gratis" : quote.cost === 0 ? "Sin costo" : formatPrice(quote.cost)}
+          </dd>
         </div>
         <div className="flex items-baseline justify-between border-t border-line pt-4">
           <dt className="font-semibold">Total referencial</dt>
-          <dd className="text-xl font-semibold tabular-nums">{formatPrice(cartSubtotal)}</dd>
+          <dd className="text-xl font-semibold tabular-nums">{formatPrice(zonesMode && !zone ? cartSubtotal : total)}</dd>
         </div>
       </dl>
-      <p className="mt-1 text-right text-[12px] text-muted">sin incluir envío</p>
+      <p className="mt-1 text-right text-[12px] text-muted">{zonesMode && zone && quote.cost !== null ? "envío incluido" : "sin incluir envío"}</p>
+      {missingFree > 0 && (
+        <p className="mt-2 rounded-xl bg-success-soft px-3 py-2 text-[12.5px] text-success">Te faltan {formatPrice(missingFree)} para tener envío gratis a {zone?.name}.</p>
+      )}
 
       {hasIssues && (
         <p role="alert" className="mt-4 rounded-xl bg-danger-soft px-4 py-3 text-[13px] text-danger">
           Hay piezas sin stock suficiente. No se incluirán en el mensaje hasta que ajustes la cantidad o las quites.
         </p>
+      )}
+
+      {zonesMode && (
+        <div className="mt-5">
+          <label htmlFor="cu-zone" className="field-label">Zona de envío</label>
+          <select id="cu-zone" className="field" value={zoneId} onChange={(e) => setZoneId(e.target.value)} aria-invalid={touched && !zone}>
+            <option value="">Elige tu zona…</option>
+            {activeShippingZones.map((z) => (
+              <option key={z.id} value={z.id}>
+                {z.name} · {z.price === null ? "costo por confirmar" : z.price === 0 ? "sin costo" : formatPrice(z.price)}
+                {z.eta ? ` · ${z.eta}` : ""}
+              </option>
+            ))}
+          </select>
+          {touched && !zone && <p className="field-error">Elige una zona de envío.</p>}
+          {zone && zone.freeFrom !== null && zone.price !== null && !quote.free && (
+            <p className="mt-1.5 text-[12px] text-muted">Envío gratis desde {formatPrice(zone.freeFrom)}.</p>
+          )}
+          {zone?.price === null && <p className="mt-1.5 text-[12px] text-muted">La tienda te dirá el costo y la empresa de envío por WhatsApp antes de que pagues.</p>}
+        </div>
       )}
 
       {needsContact && (
@@ -82,16 +125,19 @@ export function CartSummary() {
         </fieldset>
       )}
 
-      <div className="mt-6" onClickCapture={() => !contactOk && setTouched(true)}>
+      <div className="mt-6" onClickCapture={() => (!contactOk || !zoneOk) && setTouched(true)}>
         <WhatsAppCheckoutButton
           message={message}
           items={valid.map((l) => l.item)}
           combos={validCombos.map((l) => l.item)}
           customer={customer}
-          buildMessage={(code) => buildOrderMessage(cartLines, giftNote, customer, code, comboLines)}
-          disabled={(valid.length === 0 && validCombos.length === 0) || !contactOk}
+          shippingZoneId={zonesMode ? zoneId : ""}
+          buildMessage={(code) => buildOrderMessage(cartLines, giftNote, customer, code, comboLines, shipping)}
+          disabled={(valid.length === 0 && validCombos.length === 0) || !contactOk || !zoneOk}
         />
-        {(valid.length > 0 || validCombos.length > 0) && !contactOk && <p className="mt-2 text-center text-[12px] text-muted">Completa tus datos para enviar el pedido.</p>}
+        {(valid.length > 0 || validCombos.length > 0) && (!contactOk || !zoneOk) && (
+          <p className="mt-2 text-center text-[12px] text-muted">{contactOk ? "Elige tu zona de envío para enviar el pedido." : "Completa tus datos para enviar el pedido."}</p>
+        )}
       </div>
 
       <p className="mt-4 flex gap-2 text-[12.5px] leading-snug text-muted">

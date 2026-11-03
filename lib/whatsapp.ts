@@ -12,7 +12,22 @@ export function whatsappUrl(message?: string): string {
   return message ? `${base}?text=${encodeURIComponent(message)}` : base;
 }
 
-export function buildOrderMessage(lines: CartLine[], giftNote?: string, customer?: Customer, orderCode?: string, comboLines: ComboLine[] = []): string {
+/** Envío elegido en el carrito: `cost` null = por confirmar con la tienda. */
+export interface ShippingInfo {
+  zone: string;
+  cost: number | null;
+  free?: boolean;
+  pickup?: boolean;
+}
+
+export function buildOrderMessage(
+  lines: CartLine[],
+  giftNote?: string,
+  customer?: Customer,
+  orderCode?: string,
+  comboLines: ComboLine[] = [],
+  shipping?: ShippingInfo,
+): string {
   const valid = lines.filter((l) => !l.issue);
   const validCombos = comboLines.filter((l) => !l.issue);
   const subtotal =
@@ -55,8 +70,7 @@ export function buildOrderMessage(lines: CartLine[], giftNote?: string, customer
     [body, comboBody].filter(Boolean).join("\n"),
     "",
     `Subtotal referencial: ${formatPrice(subtotal)}`,
-    "Envío por confirmar.",
-    `Total referencial (sin envío): ${formatPrice(subtotal)}`,
+    ...shippingLines(subtotal, shipping),
   ];
 
   if (customer && customer.name.trim()) {
@@ -72,6 +86,14 @@ export function buildOrderMessage(lines: CartLine[], giftNote?: string, customer
 
   parts.push("", "¿Me confirman disponibilidad, precio final y opciones de entrega? Gracias.");
   return parts.join("\n");
+}
+
+function shippingLines(subtotal: number, shipping?: ShippingInfo): string[] {
+  if (!shipping) return ["Envío por confirmar.", `Total referencial (sin envío): ${formatPrice(subtotal)}`];
+  const label = shipping.pickup ? `Recojo: ${shipping.zone}` : `Envío a ${shipping.zone}`;
+  if (shipping.cost === null) return [`${label}: por confirmar.`, `Total referencial (sin envío): ${formatPrice(subtotal)}`];
+  const cost = shipping.cost;
+  return [`${label}: ${cost === 0 ? (shipping.free ? "GRATIS" : "sin costo") : formatPrice(cost)}`, `Total referencial: ${formatPrice(subtotal + cost)}`];
 }
 
 /** Consulta al negocio por una pieza agotada. */

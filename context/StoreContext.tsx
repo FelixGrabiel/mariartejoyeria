@@ -26,6 +26,11 @@ import {
   checkIsAdmin,
   dbDeleteCombo,
   dbDeletePackaging,
+  dbDeleteShippingZone,
+  dbRespondComplaint,
+  fetchComplaints,
+  dbSaveShippingZone,
+  dbUpdateOrderShipping,
   dbDeleteProduct,
   dbDeleteTheme,
   dbSaveCombo,
@@ -61,6 +66,8 @@ import type {
   PackagingOption,
   Product,
   RestockRequest,
+  ShippingZone,
+  Complaint,
   StockMovement,
   StockMovementType,
 } from "@/types";
@@ -115,6 +122,15 @@ interface StoreContextValue {
   saveTheme: (theme: MeaningTheme) => void;
   deleteTheme: (id: string) => void;
   saveDedicationMax: (value: number) => void;
+  /** Zonas de envío: con sesión de administrador incluyen las ocultas. */
+  shippingZones: ShippingZone[];
+  activeShippingZones: ShippingZone[];
+  saveShippingZone: (zone: ShippingZone) => void;
+  deleteShippingZone: (id: string) => void;
+  updateOrderShipping: (orderId: string, cost: number) => void;
+  /** Libro de Reclamaciones (solo con sesión de administrador). */
+  complaints: Complaint[];
+  respondComplaint: (id: number, response: string) => void;
   clearCart: () => void;
   giftNote: string;
   setGiftNote: (note: string) => void;
@@ -166,10 +182,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const authRequired = !!supabase;
   const [packaging, setPackaging] = useState<PackagingOption[]>([]);
   const [themes, setThemes] = useState<MeaningTheme[]>([]);
+  const [shippingZones, setShippingZones] = useState<ShippingZone[]>([]);
   const [dedicationMax, setDedicationMax] = useState(DEFAULT_DEDICATION_MAX);
   const [configLoaded, setConfigLoaded] = useState(!supabase);
   const [combos, setCombos] = useState<Combo[]>([]);
   const [restockRequests, setRestockRequests] = useState<RestockRequest[]>([]);
+  const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [comboCart, setComboCart] = useState<ComboCartItem[]>([]);
 
   const loadConfig = useCallback(async () => {
@@ -178,6 +196,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setPackaging(config.packaging);
     setThemes(config.themes);
     setDedicationMax(config.dedicationMax);
+    setShippingZones(config.shippingZones);
     setConfigLoaded(true);
     const remoteCombos = await fetchCombos();
     if (remoteCombos) setCombos(remoteCombos);
@@ -214,6 +233,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setMovements(data.movements);
     const requests = await fetchRestockRequests();
     if (requests) setRestockRequests(requests);
+    const claims = await fetchComplaints();
+    if (claims) setComplaints(claims);
     loadConfig();
   }, [showToast, loadConfig]);
 
@@ -735,6 +756,36 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [isAdmin, persist],
   );
 
+  const saveShippingZone = useCallback(
+    (zone: ShippingZone) => {
+      setShippingZones((list) => (list.some((z) => z.id === zone.id) ? list.map((z) => (z.id === zone.id ? zone : z)) : [...list, zone]));
+      if (isAdmin) persist(dbSaveShippingZone(zone), true);
+    },
+    [isAdmin, persist],
+  );
+  const deleteShippingZone = useCallback(
+    (id: string) => {
+      setShippingZones((list) => list.filter((z) => z.id !== id));
+      if (isAdmin) persist(dbDeleteShippingZone(id), true);
+    },
+    [isAdmin, persist],
+  );
+  const updateOrderShipping = useCallback(
+    (orderId: string, cost: number) => {
+      setOrders((list) => list.map((o) => (o.id === orderId ? { ...o, shippingCost: cost, shippingPending: false } : o)));
+      if (isAdmin) persist(dbUpdateOrderShipping(orderId, cost), true);
+    },
+    [isAdmin, persist],
+  );
+  const respondComplaint = useCallback(
+    (id: number, response: string) => {
+      setComplaints((list) => list.map((c) => (c.id === id ? { ...c, status: "respondido", response: response.trim(), respondedAt: new Date().toISOString() } : c)));
+      if (isAdmin) persist(dbRespondComplaint(id, response), true);
+    },
+    [isAdmin, persist],
+  );
+  const activeShippingZones = useMemo(() => shippingZones.filter((z) => z.active).sort((a, b) => a.sortOrder - b.sortOrder), [shippingZones]);
+
   const activePackaging = useMemo(() => packaging.filter((o) => o.active).sort((a, b) => a.sortOrder - b.sortOrder), [packaging]);
   const activeThemes = useMemo(() => themes.filter((t) => t.active).sort((a, b) => a.sortOrder - b.sortOrder), [themes]);
 
@@ -791,6 +842,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     saveTheme,
     deleteTheme,
     saveDedicationMax,
+    shippingZones,
+    activeShippingZones,
+    saveShippingZone,
+    deleteShippingZone,
+    updateOrderShipping,
+    complaints,
+    respondComplaint,
     clearCart,
     giftNote,
     setGiftNote,

@@ -21,6 +21,7 @@ export function WhatsAppCheckoutButton({
   items,
   combos,
   customer,
+  shippingZoneId = "",
   buildMessage,
   disabled = false,
   className,
@@ -32,6 +33,8 @@ export function WhatsAppCheckoutButton({
   combos?: ComboCartItem[];
   /** Datos de contacto: obligatorios para registrar el pedido. */
   customer?: Customer;
+  /** Zona de envío elegida (obligatoria si la tienda tiene zonas activas). */
+  shippingZoneId?: string;
   /** Arma el texto final de WhatsApp una vez que se conoce el código del pedido. */
   buildMessage?: (orderCode: string) => string;
   disabled?: boolean;
@@ -54,12 +57,12 @@ export function WhatsAppCheckoutButton({
     setBusy(true);
     const who = customer ?? { name: "", phone: "", district: "", address: "" };
     // Si el cliente vuelve a pulsar con exactamente el mismo pedido y datos, se reabre el ya registrado.
-    const signature = JSON.stringify({ items, combos, who: { ...who, phone: normalizePhone(who.phone) } });
+    const signature = JSON.stringify({ items, combos, who: { ...who, phone: normalizePhone(who.phone) }, shippingZoneId });
     const last = readStorage<{ signature: string; code: string; at: number } | null>(LAST_ORDER_KEY, null);
     const repeated = last && last.signature === signature && Date.now() - last.at < 30 * 60 * 1000 ? last.code : null;
     // Se abre la pestaña de inmediato para que el navegador no bloquee la ventana emergente.
     const tab = window.open("about:blank", "_blank");
-    const result = repeated ? { code: repeated } : await dbCreateOrder(items ?? [], who, combos ?? []);
+    const result = repeated ? { code: repeated } : await dbCreateOrder(items ?? [], who, combos ?? [], shippingZoneId);
     submitting.current = false;
     setBusy(false);
     if ("error" in result) {
