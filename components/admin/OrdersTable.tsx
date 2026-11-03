@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useStore } from "@/context/StoreContext";
 import { useToast } from "@/context/ToastContext";
 import { cn, formatDate, formatPrice } from "@/lib/format";
+import { SITE_URL } from "@/lib/seo";
+import { orderStatusMessage, whatsappToCustomer } from "@/lib/whatsapp";
 import type { Order, OrderStatus } from "@/types";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 
@@ -148,13 +150,28 @@ export function OrdersTable({ orders, compact = false }: { orders: Order[]; comp
                     <label htmlFor={`status-${order.id}`} className="sr-only">
                       Estado del pedido {order.code}
                     </label>
+                    {order.customerPhone && (
+                      <a
+                        href={whatsappToCustomer(order.customerPhone, orderStatusMessage(order.customerName, order.code, order.status, `${SITE_URL}/pedido`))}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="link-underline mt-1.5 inline-block text-[12px] font-semibold text-rose-deep"
+                      >
+                        Avisar estado por WhatsApp
+                      </a>
+                    )}
                     <select
                       id={`status-${order.id}`}
                       value={order.status}
                       onChange={(e) => {
                         const status = e.target.value as OrderStatus;
                         updateOrderStatus(order.id, status);
-                        showToast(`${order.code} ahora está «${status}».`, { tone: "info" });
+                        showToast(`${order.code} ahora está «${status}».`, {
+                          tone: "info",
+                          ...(order.customerPhone
+                            ? { action: { label: "Avisar al cliente", href: whatsappToCustomer(order.customerPhone, orderStatusMessage(order.customerName, order.code, status, `${SITE_URL}/pedido`)) } }
+                            : {}),
+                        });
                       }}
                       className={cn("field min-h-10 w-40 rounded-full py-1.5 text-[13px] capitalize")}
                     >

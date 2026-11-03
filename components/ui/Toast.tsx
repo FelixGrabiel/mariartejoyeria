@@ -34,7 +34,7 @@ export function Toast({ toast, onClose }: { toast: ToastData; onClose: () => voi
       <Icon size={18} className="shrink-0" />
       <p className="flex-1 leading-snug">{toast.message}</p>
       {toast.action && (
-        <Link href={toast.action.href} className="shrink-0 font-semibold underline underline-offset-4" onClick={onClose}>
+        <Link href={toast.action.href} className="shrink-0 font-semibold underline underline-offset-4" onClick={onClose} {...(/^https?:/.test(toast.action.href) ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
           {toast.action.label}
         </Link>
       )}

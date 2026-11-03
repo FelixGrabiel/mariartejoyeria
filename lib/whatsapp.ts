@@ -121,3 +121,24 @@ export function buildProductMessage(product: Product, variant: ProductVariant | 
     "¿Está disponible?",
   ].join("\n");
 }
+
+/** Mensaje para avisar al cliente el estado de su pedido (la tienda lo revisa y lo envía desde WhatsApp). */
+export function orderStatusMessage(name: string, code: string, status: string, trackingUrl: string): string {
+  const first = name.trim().split(/\s+/)[0] || "";
+  const hi = `Hola${first ? ` ${first}` : ""}, te escribimos de MariArte.`;
+  const track = `Puedes ver el estado de tu pedido aquí: ${trackingUrl} (con tu código y celular).`;
+  switch (status) {
+    case "confirmado":
+      return `${hi} Confirmamos tu pedido ${code}: ya verificamos disponibilidad y precio. Te enviaremos los datos para el pago. ${track}`;
+    case "preparado":
+      return `${hi} Tu pedido ${code} está en preparación. ${track}`;
+    case "enviado":
+      return `${hi} Tu pedido ${code} ya fue enviado. ${track}`;
+    case "entregado":
+      return `${hi} Tu pedido ${code} figura como entregado. ¡Gracias por tu compra! Si algo no está bien, escríbenos por aquí.`;
+    case "cancelado":
+      return `${hi} Tu pedido ${code} fue cancelado. Si quieres retomarlo o tienes dudas, escríbenos por aquí.`;
+    default:
+      return `${hi} Recibimos tu pedido ${code} y lo estamos revisando. ${track}`;
+  }
+}
