@@ -81,6 +81,14 @@ En una joya agotada, el cliente puede **consultar por WhatsApp** o **dejar su co
 - Completa allí tus datos (razón social, RUC, domicilio, correo, ciudad, medios de pago, días de cambio). Mientras falten, el texto muestra «[por completar]» y la página lo avisa.
 - `/reclamaciones` es el Libro de Reclamaciones virtual: hoja con los datos del consumidor, número correlativo (`LR-000001-2026`), límites contra abuso y gestión en `/admin` → **Reclamos** (con contador y marca de plazo vencido).
 
+### Mejoras técnicas (hecho)
+
+- **Next.js 16** (sin vulnerabilidades en producción según `npm audit --omit=dev`), **ESLint** (`npm run lint`, también en CI) y pruebas unitarias del carrito (`lib/cart-lines.ts`, extraído de `StoreContext`).
+- **Respaldo:** botón «Descargar respaldo» en `/admin` (JSON con todas las tablas). Descárgalo cada semana y guárdalo fuera de la nube del proyecto; revisa además en Supabase → Database → Backups lo que incluye tu plan.
+- **Errores del navegador:** `app/error.tsx` y `ErrorReporter` los envían a la tabla `client_errors` (sin datos personales). Requiere ejecutar `supabase/migrations/20261102140000_registro_de_errores_del_navegador.sql` en el SQL Editor de Supabase; sin ella el sitio funciona igual y el envío falla en silencio.
+- **Visitas y velocidad:** Vercel Analytics y Speed Insights, apagados por defecto. Actívalos en el panel de Vercel (Analytics / Speed Insights) y define `NEXT_PUBLIC_VERCEL_ANALYTICS=true`.
+- **Asistente con IA:** su texto ya conoce las zonas de envío, las políticas y el Libro de Reclamaciones.
+
 **Pendiente (Fase C y cupones):** cupones con código, guías de tallas y cuidados por material, aviso de reposición, video del producto, catálogo en PDF, QR/enlaces compartibles, reseñas autorizadas, indicadores avanzados, historial de inventario con usuario y exportaciones.
 
 ---

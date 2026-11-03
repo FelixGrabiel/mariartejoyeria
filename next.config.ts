@@ -28,8 +28,6 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  // El proyecto no incluye configuración de ESLint; TypeScript sí se verifica en `next build`.
-  eslint: { ignoreDuringBuilds: true },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

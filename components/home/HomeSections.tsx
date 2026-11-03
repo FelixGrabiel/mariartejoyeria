@@ -3,7 +3,7 @@ import Link from "next/link";
 import { site } from "@/data/site";
 import { whatsappUrl } from "@/lib/whatsapp";
 import { ArrowRight, Gift, Instagram, MessageCircle, Package, PenLine, Sparkles, Truck } from "@/components/ui/icons";
-import { Ornament, SectionHeading } from "@/components/ui/misc";
+import { Ornament } from "@/components/ui/misc";
 
 export function GiftSection() {
   const items = [

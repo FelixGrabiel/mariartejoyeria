@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useStore } from "@/context/StoreContext";
 import { useToast } from "@/context/ToastContext";
+import { downloadBackup } from "@/lib/backup";
 import { lowStockVariants } from "@/lib/catalog";
 import { cn, formatPrice } from "@/lib/format";
 import type { OrderStatus } from "@/types";
@@ -77,9 +78,22 @@ export function AdminDashboard() {
             <h1 className="truncate font-serif text-[1.9rem] font-semibold leading-tight">{title}</h1>
           </div>
           {authRequired ? (
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => signOut()} title={adminEmail ?? undefined}>
-              Cerrar sesión
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                title="Descarga una copia de todos los datos de la tienda"
+                onClick={async () => {
+                  const error = await downloadBackup();
+                  showToast(error ?? "Respaldo descargado. Guárdalo en un lugar seguro: contiene datos de clientes.", { tone: error ? "error" : "success" });
+                }}
+              >
+                <span className="hidden sm:inline">Descargar respaldo</span><span className="sm:hidden">Respaldo</span>
+              </button>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => signOut()} title={adminEmail ?? undefined}>
+                Cerrar sesión
+              </button>
+            </div>
           ) : (
             <button type="button" className="btn btn-secondary btn-sm" onClick={() => setConfirmReset(true)}>
               <RotateCcw size={15} /> <span className="hidden sm:inline">Restablecer datos de demo</span><span className="sm:hidden">Restablecer</span>

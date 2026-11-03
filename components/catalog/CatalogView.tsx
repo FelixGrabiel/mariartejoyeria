@@ -5,7 +5,6 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useStore } from "@/context/StoreContext";
 import { categories, getCategory } from "@/data/categories";
-import { site } from "@/data/site";
 import { whatsappUrl } from "@/lib/whatsapp";
 import {
   emptyFilters,
@@ -90,7 +89,6 @@ export function CatalogView() {
 
   const activeCount = activeChips.length;
   const singleCategory = filters.categories.length === 1 ? getCategory(filters.categories[0]) : undefined;
-  const sampleCategory = singleCategory && !singleCategory.image;
   const singleTheme = filters.themes.length === 1 ? activeThemes.find((t) => t.id === filters.themes[0]) : undefined;
 
   return (
