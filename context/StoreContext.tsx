@@ -52,6 +52,7 @@ import {
 } from "@/lib/supabase";
 import { STORAGE_KEYS, readStorage, removeStorage, writeStorage } from "@/lib/storage";
 import { isComboLive } from "@/lib/combo";
+import { needsMfaChallenge } from "@/lib/mfa";
 import { buildCartLines, buildComboLines, cartSubtotalOf, unitsInCartFor } from "@/lib/cart-lines";
 import { DEFAULT_DEDICATION_MAX, sameLine } from "@/lib/gift";
 import type {
@@ -158,6 +159,9 @@ interface StoreContextValue {
   adminEmail: string | null;
   signIn: (email: string, password: string) => Promise<string | null>;
   signOut: () => Promise<void>;
+  /** El administrador tiene la verificación en dos pasos y aún no escribió su código en esta sesión. */
+  mfaPending: boolean;
+  completeMfa: () => Promise<void>;
 }
 
 const StoreContext = createContext<StoreContextValue | null>(null);
@@ -180,6 +184,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [authChecked, setAuthChecked] = useState(!supabase);
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminEmail, setAdminEmail] = useState<string | null>(null);
+  const [mfaPending, setMfaPending] = useState(false);
   const authRequired = !!supabase;
   const [packaging, setPackaging] = useState<PackagingOption[]>([]);
   const [themes, setThemes] = useState<MeaningTheme[]>([]);
@@ -248,7 +253,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setIsAdmin(admin);
       setAdminEmail(admin ? (email ?? null) : null);
       setAuthChecked(true);
-      if (admin) loadAdminData();
+      const needsCode = admin && (await needsMfaChallenge());
+      if (cancelled) return;
+      setMfaPending(needsCode);
+      if (admin && !needsCode) loadAdminData();
     }
     supabase.auth.getSession().then(({ data }) => apply(data.session?.user.id, data.session?.user.email));
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
@@ -306,6 +314,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
     setIsAdmin(false);
     setAdminEmail(null);
+    setMfaPending(false);
     const remote = await fetchCatalog();
     if (remote) setProducts(remote);
     setOrders([]);
@@ -313,6 +322,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setRestockRequests([]);
     loadConfig();
   }, [loadConfig]);
+
+  const completeMfa = useCallback(async () => {
+    setMfaPending(false);
+    await loadAdminData();
+  }, [loadAdminData]);
 
   // Ejecuta una escritura en la base; si falla, avisa y recarga el estado real.
   const persist = useCallback(
@@ -785,6 +799,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     adminEmail,
     signIn,
     signOut,
+    mfaPending,
+    completeMfa,
   };
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

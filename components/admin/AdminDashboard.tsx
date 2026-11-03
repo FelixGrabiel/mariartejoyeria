@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useStore } from "@/context/StoreContext";
 import { useToast } from "@/context/ToastContext";
 import { downloadBackup } from "@/lib/backup";
@@ -12,6 +12,9 @@ import { ConfirmModal, Modal } from "@/components/ui/Modal";
 import { AlertCircle, ClipboardList, Info, Menu, Package, RotateCcw, Sparkles } from "@/components/ui/icons";
 import { Skeleton } from "@/components/ui/misc";
 import { AdminLogin } from "./AdminLogin";
+import { MfaChallenge } from "./MfaChallenge";
+import { SecurityModal } from "./SecurityModal";
+import { listVerifiedFactors } from "@/lib/mfa";
 import { AdminSidebar,adminSections, type AdminSection } from "./AdminSidebar";
 import { PackagingPanel, ThemesPanel } from "./GiftAdminPanels";
 import { CombosPanel } from "./CombosPanel";
@@ -26,12 +29,18 @@ import { SalesCharts } from "./SalesCharts";
 import { StatCard } from "./StatCard";
 
 export function AdminDashboard() {
-  const { hydrated, products, orders, restockRequests, complaints, resetDemo, authRequired, authChecked, isAdmin, adminEmail, signOut } = useStore();
+  const { hydrated, products, orders, restockRequests, complaints, resetDemo, authRequired, authChecked, isAdmin, adminEmail, signOut, mfaPending } = useStore();
   const { showToast } = useToast();
   const [section, setSection] = useState<AdminSection>("resumen");
   const [navOpen, setNavOpen] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [securityOpen, setSecurityOpen] = useState(false);
+  const [mfaOn, setMfaOn] = useState<boolean | null>(null);
   const [orderFilter, setOrderFilter] = useState<"todos" | OrderStatus>("todos");
+
+  useEffect(() => {
+    if (authRequired && isAdmin && !mfaPending) listVerifiedFactors().then((f) => setMfaOn(f.length > 0));
+  }, [authRequired, isAdmin, mfaPending]);
 
   const active = products.filter((p) => p.active).length;
   const pending = orders.filter((o) => o.status === "pendiente").length;
@@ -43,6 +52,7 @@ export function AdminDashboard() {
 
   if (authRequired && !authChecked) return <div className="min-h-dvh bg-[#faf5f2]" aria-busy="true" />;
   if (authRequired && !isAdmin) return <AdminLogin />;
+  if (authRequired && mfaPending) return <MfaChallenge />;
 
   return (
     <div className="min-h-dvh bg-[#faf5f2] lg:grid lg:grid-cols-[256px_1fr]">
@@ -92,6 +102,9 @@ export function AdminDashboard() {
               >
                 <span className="hidden sm:inline">Descargar respaldo</span><span className="sm:hidden">Respaldo</span>
               </button>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSecurityOpen(true)}>
+                Seguridad
+              </button>
               <button type="button" className="btn btn-secondary btn-sm" onClick={() => signOut()} title={adminEmail ?? undefined}>
                 Cerrar sesión
               </button>
@@ -102,6 +115,14 @@ export function AdminDashboard() {
             </button>
           )}
         </header>
+
+        {authRequired && mfaOn === false && (
+          <div role="note" className="flex flex-wrap items-center justify-center gap-3 bg-warning-soft px-4 py-2 text-center text-[12.5px] font-medium text-warning">
+            Tu cuenta aún no tiene verificación en dos pasos.
+            <button type="button" className="underline underline-offset-4" onClick={() => setSecurityOpen(true)}>Activarla ahora</button>
+          </div>
+        )}
+        {authRequired && <SecurityModal open={securityOpen} onClose={() => setSecurityOpen(false)} onChange={setMfaOn} />}
 
         <main className="px-4 py-6 sm:px-8 sm:py-8">
           {!hydrated ? (
