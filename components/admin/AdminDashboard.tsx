@@ -20,6 +20,7 @@ import { PackagingPanel, ThemesPanel } from "./GiftAdminPanels";
 import { CombosPanel } from "./CombosPanel";
 import { InventoryPanel } from "./InventoryPanel";
 import { RestockPanel } from "./RestockPanel";
+import { CouponsPanel } from "./CouponsPanel";
 import { ShippingPanel } from "./ShippingPanel";
 import { LegalPanel } from "./LegalPanel";
 import { ComplaintsPanel } from "./ComplaintsPanel";
@@ -226,6 +227,8 @@ export function AdminDashboard() {
               {section === "significados" && <ThemesPanel />}
 
               {section === "combos" && <CombosPanel />}
+
+              {section === "cupones" && (authRequired ? <CouponsPanel /> : <p className="rounded-2xl border border-dashed border-line p-8 text-center text-sm text-muted">Los cupones requieren la tienda conectada a Supabase.</p>)}
 
               {section === "avisos" && <RestockPanel />}
 

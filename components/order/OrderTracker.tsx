@@ -130,6 +130,12 @@ export function OrderTracker() {
                 <dt className="text-muted">Productos</dt>
                 <dd className="tabular-nums">{formatPrice(order.subtotal ?? 0)}</dd>
               </div>
+              {order.discount ? (
+                <div className="flex justify-between text-success">
+                  <dt>Cupón{order.coupon ? ` ${order.coupon}` : ""}</dt>
+                  <dd className="tabular-nums">- {formatPrice(order.discount)}</dd>
+                </div>
+              ) : null}
               {order.shipping_zone && (
                 <div className="flex justify-between">
                   <dt className="text-muted">Envío · {order.shipping_zone}</dt>

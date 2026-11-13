@@ -20,6 +20,12 @@ export interface ShippingInfo {
   pickup?: boolean;
 }
 
+/** Cupón aplicado en el carrito (el servidor vuelve a calcular el descuento al registrar el pedido). */
+export interface CouponInfo {
+  code: string;
+  discount: number;
+}
+
 export function buildOrderMessage(
   lines: CartLine[],
   giftNote?: string,
@@ -27,6 +33,7 @@ export function buildOrderMessage(
   orderCode?: string,
   comboLines: ComboLine[] = [],
   shipping?: ShippingInfo,
+  coupon?: CouponInfo,
 ): string {
   const valid = lines.filter((l) => !l.issue);
   const validCombos = comboLines.filter((l) => !l.issue);
@@ -70,7 +77,8 @@ export function buildOrderMessage(
     [body, comboBody].filter(Boolean).join("\n"),
     "",
     `Subtotal referencial: ${formatPrice(subtotal)}`,
-    ...shippingLines(subtotal, shipping),
+    ...(coupon && coupon.discount > 0 ? [`Cupón ${coupon.code}: - ${formatPrice(coupon.discount)}`] : []),
+    ...shippingLines(subtotal - (coupon?.discount ?? 0), shipping),
   ];
 
   if (customer && customer.name.trim()) {

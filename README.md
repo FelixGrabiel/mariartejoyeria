@@ -57,6 +57,14 @@ Datos de ejemplo: los dos empaques sembrados se llaman «(demostración)», tien
 
 No hay combos de ejemplo: se crean en el panel. Un combo pausado, programado o vencido no se ve ni se puede comprar (lo exige la base de datos, no solo la pantalla).
 
+### Cupones, guía de tallas y cuidados, y botones del asistente (hecho)
+
+- **Cupones de descuento** (`/admin` → **Cupones**): código, % o monto fijo, compra mínima, vigencia y máximo de usos. La clienta escribe el código en el carrito y ve el descuento; el servidor (`place_order_v3`, `coupon_discount`) lo vuelve a calcular al registrar el pedido y revierte todo el pedido si el cupón no vale. Los códigos no se pueden listar desde la web y los intentos se limitan por IP. El descuento se aplica al subtotal de productos (no al envío) y se guarda en el pedido (`coupon_code`, `discount_amount`); aparece en el panel, en el seguimiento y en el mensaje de WhatsApp.
+  **Antes de publicar:** aplica `supabase/migrations/20261115120000_cupones_de_descuento.sql` en Supabase. Cuando la tienda nueva esté desplegada puedes cerrar `place_order_v2` (el comando está al final de la migración).
+- **Guía de tallas y cuidados** (`/guias`): cómo medir muñeca, dedo y largo de collar, con tablas referenciales, y cuidados por material. Enlazada desde el pie, la ficha de producto y el asistente.
+- **Ofertas**: «Ofertas» en el menú lleva a `/combos` (combos con ahorro). Los cupones se aplican en el carrito.
+- **Asistente**: botones nuevos «Ofertas y cupones», «Guía de tallas» y «Cuidado de mis joyas», con enlaces directos.
+
 ### Avisos de stock (hecho)
 
 En una joya agotada, el cliente puede **consultar por WhatsApp** o **dejar su contacto** («Avísame cuando vuelva», con consentimiento). La tienda ve los avisos en `/admin` → **Avisos de stock** (con contador y botón «Avisar por WhatsApp»); al registrar una entrada de stock, el panel recuerda cuántas personas esperan. Es un aviso **manual**, no automático. En el carrito, una pieza sin stock también ofrece «Consultar disponibilidad por WhatsApp».

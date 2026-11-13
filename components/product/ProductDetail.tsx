@@ -247,7 +247,8 @@ export function ProductDetail({ slug }: { slug: string }) {
             <div className="mt-8">
               <InfoAccordion title="Cuidados" icon={<Heart size={17} />} defaultOpen>
                 {product.care ??
-                  "Evita el contacto con agua, perfumes y cremas. Guárdala seca en su bolsita cuando no la uses."}
+                  "Evita el contacto con agua, perfumes y cremas. Guárdala seca en su bolsita cuando no la uses."}{" "}
+                <Link href="/guias#cuidados" className="link-underline text-rose-deep">Guía de tallas y cuidados</Link>.
               </InfoAccordion>
               <InfoAccordion title="Empaque y regalo" icon={<Gift size={17} />}>
                 {product.giftEnabled && activePackaging.length > 0 ? (

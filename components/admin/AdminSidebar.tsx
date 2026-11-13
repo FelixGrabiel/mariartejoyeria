@@ -4,7 +4,7 @@ import Link from "next/link";
 import { cn } from "@/lib/format";
 import { AlertCircle, ClipboardList, FileText, Gift, History, LayoutDashboard, Package, ShoppingBag, Sparkles, Store, Truck } from "@/components/ui/icons";
 
-export type AdminSection = "resumen" | "productos" | "pedidos" | "inventario" | "empaques" | "significados" | "combos" | "avisos" | "envios" | "negocio" | "reclamos";
+export type AdminSection = "resumen" | "productos" | "pedidos" | "inventario" | "empaques" | "significados" | "combos" | "cupones" | "avisos" | "envios" | "negocio" | "reclamos";
 
 export const adminSections: { id: AdminSection; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "resumen", label: "Resumen", icon: LayoutDashboard },
@@ -14,6 +14,7 @@ export const adminSections: { id: AdminSection; label: string; icon: typeof Layo
   { id: "empaques", label: "Empaques", icon: Gift },
   { id: "significados", label: "Significados", icon: Sparkles },
   { id: "combos", label: "Combos", icon: ShoppingBag },
+  { id: "cupones", label: "Cupones", icon: Sparkles },
   { id: "avisos", label: "Avisos de stock", icon: AlertCircle },
   { id: "envios", label: "Envíos", icon: Truck },
   { id: "negocio", label: "Negocio y legal", icon: FileText },
@@ -23,7 +24,7 @@ export const adminSections: { id: AdminSection; label: string; icon: typeof Layo
 /** Agrupación del menú para que sea fácil de recorrer. */
 const adminGroups: { title: string; ids: AdminSection[] }[] = [
   { title: "Tienda", ids: ["resumen", "productos", "pedidos", "inventario"] },
-  { title: "Regalos y promos", ids: ["empaques", "significados", "combos"] },
+  { title: "Regalos y promos", ids: ["empaques", "significados", "combos", "cupones"] },
   { title: "Clientes", ids: ["avisos", "reclamos"] },
   { title: "Configuración", ids: ["envios", "negocio"] },
 ];

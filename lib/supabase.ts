@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { normalizePhone, type Customer } from "@/lib/customer";
+import type { Coupon } from "@/lib/coupon";
 import type { CartItem, Combo, Complaint, LegalSection, ShippingZone, RestockRequest, ComboCartItem, CategoryId, MaterialType, MeaningTheme, Order, OrderStatus, PackagingOption, Product, StockMovement } from "@/types";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -84,7 +85,7 @@ export async function fetchAdminData(): Promise<{ products: Product[]; orders: O
     supabase.from("products").select("*, product_variants(sku,label,stock,sort_order,min_stock), product_themes(theme_id)").order("created_at", { ascending: false }),
     supabase
       .from("orders")
-      .select("id,code,customer_name,customer_phone,address,district,channel,status,created_at,shipping_zone_name,shipping_cost,shipping_pending,order_items(product_id,product_name,variant_label,quantity,unit_price,occasion,packaging_name,packaging_price,dedication,meaning_card,combo_name,combo_group)")
+      .select("id,code,customer_name,customer_phone,address,district,channel,status,created_at,shipping_zone_name,shipping_cost,shipping_pending,coupon_code,discount_amount,order_items(product_id,product_name,variant_label,quantity,unit_price,occasion,packaging_name,packaging_price,dedication,meaning_card,combo_name,combo_group)")
       .order("created_at", { ascending: false })
       .order("code", { ascending: false }),
     supabase.from("inventory_movements").select("*").order("date", { ascending: false }).order("id", { ascending: false }),
@@ -105,6 +106,8 @@ export async function fetchAdminData(): Promise<{ products: Product[]; orders: O
       shippingZone: r.shipping_zone_name ?? undefined,
       shippingCost: Number(r.shipping_cost ?? 0),
       shippingPending: Boolean(r.shipping_pending),
+      couponCode: r.coupon_code ?? undefined,
+      discountAmount: Number(r.discount_amount ?? 0),
       items: (r.order_items ?? []).map((i: {
         product_id: string | null;
         product_name: string;
@@ -236,10 +239,12 @@ export async function dbCreateOrder(
   customer: Customer,
   combos: ComboCartItem[] = [],
   shippingZoneId = "",
+  couponCode = "",
 ): Promise<{ code: string } | { error: string }> {
   if (!supabase) return { error: "Supabase no está configurado." };
-  const { data, error } = await supabase.rpc("place_order_v2", {
+  const { data, error } = await supabase.rpc("place_order_v3", {
     p_shipping_zone: shippingZoneId,
+    p_coupon: couponCode,
     p_customer_name: customer.name.trim(),
     p_phone: normalizePhone(customer.phone),
     p_district: customer.district.trim(),
@@ -395,6 +400,8 @@ export interface TrackedOrder {
   shipping_zone?: string | null;
   shipping_cost?: number;
   shipping_pending?: boolean;
+  coupon?: string | null;
+  discount?: number;
   total?: number;
   items: { name: string; variant: string; quantity: number; occasion: string | null; packaging: string | null; combo?: string | null }[];
 }
@@ -704,5 +711,71 @@ export async function fetchComplaints(): Promise<Complaint[] | null> {
 export async function dbRespondComplaint(id: number, response: string): Promise<DbResult> {
   if (!supabase) return "Supabase no está configurado.";
   const { error } = await supabase.from("complaints").update({ status: "respondido", response: response.trim(), responded_at: new Date().toISOString() }).eq("id", id);
+  return error?.message ?? null;
+}
+
+
+// ---------- Cupones ----------
+
+/** Vista previa del descuento en el carrito. El servidor revisa vigencia, compra mínima y usos. */
+export async function dbPreviewCoupon(code: string, subtotal: number): Promise<{ code: string; discount: number } | { error: string }> {
+  if (!supabase) return { error: "Los cupones no están disponibles en modo demostración." };
+  const { data, error } = await supabase.rpc("preview_coupon", { p_code: code, p_subtotal: subtotal });
+  if (error) return { error: error.message };
+  const res = data as { code: string; discount: number | string };
+  return { code: res.code, discount: Number(res.discount) };
+}
+
+interface CouponRow {
+  code: string;
+  kind: "percent" | "amount";
+  value: number | string;
+  min_subtotal: number | string;
+  starts_at: string | null;
+  ends_at: string | null;
+  max_uses: number | null;
+  uses: number;
+  active: boolean;
+  note: string;
+}
+
+/** Solo con sesión de administrador (RLS). */
+export async function fetchCoupons(): Promise<Coupon[] | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase.from("coupons").select("*").order("created_at", { ascending: false });
+  if (error || !data) return null;
+  return (data as CouponRow[]).map((r) => ({
+    code: r.code,
+    kind: r.kind,
+    value: Number(r.value),
+    minSubtotal: Number(r.min_subtotal),
+    startsAt: r.starts_at ?? undefined,
+    endsAt: r.ends_at ?? undefined,
+    maxUses: r.max_uses ?? undefined,
+    uses: r.uses,
+    active: r.active,
+    note: r.note,
+  }));
+}
+
+export async function dbSaveCoupon(c: Coupon): Promise<DbResult> {
+  if (!supabase) return "Supabase no está configurado.";
+  const { error } = await supabase.from("coupons").upsert({
+    code: c.code,
+    kind: c.kind,
+    value: c.value,
+    min_subtotal: c.minSubtotal,
+    starts_at: c.startsAt ?? null,
+    ends_at: c.endsAt ?? null,
+    max_uses: c.maxUses ?? null,
+    active: c.active,
+    note: c.note,
+  });
+  return error?.message ?? null;
+}
+
+export async function dbDeleteCoupon(code: string): Promise<DbResult> {
+  if (!supabase) return "Supabase no está configurado.";
+  const { error } = await supabase.from("coupons").delete().eq("code", code);
   return error?.message ?? null;
 }

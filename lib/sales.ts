@@ -8,7 +8,7 @@ export const SOLD_STATUSES: OrderStatus[] = ["confirmado", "preparado", "enviado
 export const isSold = (s: OrderStatus): boolean => SOLD_STATUSES.includes(s);
 
 export const itemsValue = (o: Order): number => o.items.reduce((sum, i) => sum + i.quantity * (i.unitPrice + (i.packagingPrice ?? 0)), 0);
-export const orderValue = (o: Order): number => Math.round((itemsValue(o) + (o.shippingCost ?? 0)) * 100) / 100;
+export const orderValue = (o: Order): number => Math.round((itemsValue(o) - (o.discountAmount ?? 0) + (o.shippingCost ?? 0)) * 100) / 100;
 
 const DAY = 86_400_000;
 const dayKey = (d: Date): string => d.toISOString().slice(0, 10);

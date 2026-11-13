@@ -24,9 +24,9 @@ export function orderSubtotal(order: Order): number {
   return order.items.reduce((sum, i) => sum + i.quantity * (i.unitPrice + (i.packagingPrice ?? 0)), 0);
 }
 
-/** Productos + envío ya confirmado. */
+/** Productos − descuento del cupón + envío ya confirmado. */
 export function orderTotal(order: Order): number {
-  return orderSubtotal(order) + (order.shippingCost ?? 0);
+  return orderSubtotal(order) - (order.discountAmount ?? 0) + (order.shippingCost ?? 0);
 }
 
 function ShippingCell({ order }: { order: Order }) {
@@ -139,6 +139,11 @@ export function OrdersTable({ orders, compact = false }: { orders: Order[]; comp
                 {order.shippingZone && !compact && (
                   <div className="text-left sm:text-right">
                     <ShippingCell order={order} />
+                    {order.couponCode && (
+                      <p className="text-[12px] text-success">
+                        Cupón {order.couponCode}: - {formatPrice(order.discountAmount ?? 0)}
+                      </p>
+                    )}
                   </div>
                 )}
               </td>

@@ -23,6 +23,7 @@ const columns = [
     title: "Ayuda",
     links: [
       { href: "/contacto", label: "Contacto" },
+      { href: "/guias", label: "Tallas y cuidados" },
       { href: "/contacto#preguntas", label: "Preguntas frecuentes" },
       { href: "/politicas#envios", label: "Envíos" },
       { href: "/politicas#cambios", label: "Cambios y devoluciones" },

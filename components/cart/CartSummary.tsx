@@ -4,10 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useStore } from "@/context/StoreContext";
 import { emptyCustomer, isCustomerValid, validateCustomer, type Customer } from "@/lib/customer";
 import { readStorage, writeStorage } from "@/lib/storage";
-import { supabase } from "@/lib/supabase";
+import { dbPreviewCoupon, supabase } from "@/lib/supabase";
+import { normalizeCouponCode } from "@/lib/coupon";
 import { formatPrice } from "@/lib/format";
 import { missingForFreeShipping, shippingQuote } from "@/lib/shipping";
-import { buildOrderMessage, type ShippingInfo } from "@/lib/whatsapp";
+import { buildOrderMessage, type CouponInfo, type ShippingInfo } from "@/lib/whatsapp";
 import { ChevronDown, Info } from "@/components/ui/icons";
 import { WhatsAppCheckoutButton } from "./WhatsAppCheckoutButton";
 
@@ -28,15 +29,21 @@ export function CartSummary() {
   const [zoneId, setZoneId] = useState("");
   const zone = activeShippingZones.find((z) => z.id === zoneId);
   const zonesMode = needsContact && activeShippingZones.length > 0;
-  const quote = shippingQuote(zone, cartSubtotal);
-  const missingFree = missingForFreeShipping(zone, cartSubtotal);
+  const [couponInput, setCouponInput] = useState("");
+  const [coupon, setCoupon] = useState<CouponInfo | null>(null);
+  const [couponError, setCouponError] = useState("");
+  const [couponBusy, setCouponBusy] = useState(false);
+  const discount = coupon?.discount ?? 0;
+  const payable = Math.max(cartSubtotal - discount, 0);
+  const quote = shippingQuote(zone, payable);
+  const missingFree = missingForFreeShipping(zone, payable);
   const shipping: ShippingInfo | undefined = useMemo(
     () => (zonesMode && zone ? { zone: zone.name, cost: quote.cost, free: quote.free, pickup: zone.pickup } : undefined),
     [zonesMode, zone, quote.cost, quote.free],
   );
-  const total = cartSubtotal + (quote.cost ?? 0);
+  const total = payable + (quote.cost ?? 0);
   const zoneOk = !zonesMode || Boolean(zone);
-  const message = buildOrderMessage(cartLines, giftNote, needsContact ? customer : undefined, undefined, comboLines, shipping);
+  const message = buildOrderMessage(cartLines, giftNote, needsContact ? customer : undefined, undefined, comboLines, shipping, coupon ?? undefined);
 
   useEffect(() => {
     setZoneId(readStorage<string>("mariarte.v1.shippingZone", ""));
@@ -50,6 +57,38 @@ export function CartSummary() {
   useEffect(() => {
     writeStorage("mariarte.v1.customer", customer);
   }, [customer]);
+  // Si cambia el carrito, el descuento se vuelve a pedir al servidor (compra mínima, porcentaje).
+  useEffect(() => {
+    if (!coupon) return;
+    let cancelled = false;
+    dbPreviewCoupon(coupon.code, cartSubtotal).then((res) => {
+      if (cancelled) return;
+      if ("error" in res) {
+        setCoupon(null);
+        setCouponError(res.error);
+      } else if (res.discount !== coupon.discount) {
+        setCoupon({ code: res.code, discount: res.discount });
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+    // Solo depende del subtotal y del código aplicado.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartSubtotal, coupon?.code]);
+
+  async function applyCoupon() {
+    const code = normalizeCouponCode(couponInput);
+    if (!code) return setCouponError("Escribe tu código de cupón.");
+    setCouponBusy(true);
+    setCouponError("");
+    const res = await dbPreviewCoupon(code, cartSubtotal);
+    setCouponBusy(false);
+    if ("error" in res) return setCouponError(res.error);
+    setCoupon({ code: res.code, discount: res.discount });
+    setCouponInput("");
+  }
+
   const set = (patch: Partial<Customer>) => setCustomer((c) => ({ ...c, ...patch }));
 
   return (
@@ -69,6 +108,12 @@ export function CartSummary() {
             <dd className="font-semibold tabular-nums">- {formatPrice(totalSavings)}</dd>
           </div>
         )}
+        {discount > 0 && (
+          <div className="flex justify-between text-success">
+            <dt>Cupón {coupon?.code}</dt>
+            <dd className="font-semibold tabular-nums">- {formatPrice(discount)}</dd>
+          </div>
+        )}
         <div className="flex justify-between">
           <dt className="text-muted">{zone?.pickup ? "Recojo" : "Envío"}</dt>
           <dd className={quote.cost === null ? "font-medium text-rose-deep" : quote.free || quote.cost === 0 ? "font-semibold text-success" : "font-semibold tabular-nums"}>
@@ -77,7 +122,7 @@ export function CartSummary() {
         </div>
         <div className="flex items-baseline justify-between border-t border-line pt-4">
           <dt className="font-semibold">Total referencial</dt>
-          <dd className="text-xl font-semibold tabular-nums">{formatPrice(zonesMode && !zone ? cartSubtotal : total)}</dd>
+          <dd className="text-xl font-semibold tabular-nums">{formatPrice(zonesMode && !zone ? payable : total)}</dd>
         </div>
       </dl>
       <p className="mt-1 text-right text-[12px] text-muted">{zonesMode && zone && quote.cost !== null ? "envío incluido" : "sin incluir envío"}</p>
@@ -89,6 +134,39 @@ export function CartSummary() {
         <p role="alert" className="mt-4 rounded-xl bg-danger-soft px-4 py-3 text-[13px] text-danger">
           Hay piezas sin stock suficiente. No se incluirán en el mensaje hasta que ajustes la cantidad o las quites.
         </p>
+      )}
+
+      {needsContact && (
+        <div className="mt-5">
+          {coupon ? (
+            <p className="flex items-center justify-between rounded-xl bg-success-soft px-3 py-2 text-[13px] text-success">
+              <span>Cupón <strong>{coupon.code}</strong> aplicado</span>
+              <button type="button" className="font-semibold underline" onClick={() => { setCoupon(null); setCouponError(""); }}>Quitar</button>
+            </p>
+          ) : (
+            <>
+              <label htmlFor="cu-coupon" className="field-label">¿Tienes un cupón?</label>
+              <div className="flex gap-2">
+                <input
+                  id="cu-coupon"
+                  className="field min-h-11 flex-1 uppercase"
+                  value={couponInput}
+                  onChange={(e) => setCouponInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); applyCoupon(); } }}
+                  placeholder="CÓDIGO"
+                  maxLength={24}
+                  autoComplete="off"
+                  aria-invalid={Boolean(couponError)}
+                  aria-describedby={couponError ? "cu-coupon-error" : undefined}
+                />
+                <button type="button" className="btn btn-secondary btn-sm" onClick={applyCoupon} disabled={couponBusy || !couponInput.trim()}>
+                  {couponBusy ? "Revisando…" : "Aplicar"}
+                </button>
+              </div>
+            </>
+          )}
+          {couponError && <p id="cu-coupon-error" role="alert" className="field-error">{couponError}</p>}
+        </div>
       )}
 
       {zonesMode && (
@@ -132,7 +210,8 @@ export function CartSummary() {
           combos={validCombos.map((l) => l.item)}
           customer={customer}
           shippingZoneId={zonesMode ? zoneId : ""}
-          buildMessage={(code) => buildOrderMessage(cartLines, giftNote, customer, code, comboLines, shipping)}
+          couponCode={coupon?.code ?? ""}
+          buildMessage={(code) => buildOrderMessage(cartLines, giftNote, customer, code, comboLines, shipping, coupon ?? undefined)}
           disabled={(valid.length === 0 && validCombos.length === 0) || !contactOk || !zoneOk}
         />
         {(valid.length > 0 || validCombos.length > 0) && (!contactOk || !zoneOk) && (
