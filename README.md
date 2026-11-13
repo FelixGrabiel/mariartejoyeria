@@ -1,8 +1,8 @@
-# MariArte · Prototipo web de demostración
+# MariArte · Tienda online
 
-Tienda online **navegable y funcional** para MariArte | Joyería y Accesorios, hecha con **Next.js (App Router) + React + TypeScript + Tailwind CSS**. Funciona sin backend: el catálogo, los pedidos y el stock son **datos de ejemplo** y el carrito, los favoritos y los cambios del panel se guardan en el `localStorage` del navegador.
+Tienda online de MariArte | Joyería y Accesorios, hecha con **Next.js (App Router) + React + TypeScript + Tailwind CSS** y **Supabase** (base de datos, autenticación y fotos). Los pedidos se coordinan por WhatsApp; la web no realiza cobros en línea.
 
-> ⚠️ **Prototipo de demostración.** Productos, precios, SKU, stock, pedidos y testimonios son ficticios. No hay cobros, ni autenticación, ni envío de datos a ningún servidor.
+> **Modo demostración (solo para desarrollo).** Sin variables de Supabase, y con `NEXT_PUBLIC_DEMO_MODE=true`, la tienda carga productos, pedidos y stock **ficticios** y guarda carrito, favoritos y cambios del panel en el `localStorage` del navegador. En producción no se usa.
 
 ---
 
@@ -132,7 +132,7 @@ Si `npm run build` muestra algún error de TypeScript, ejecuta `npm run typechec
 | `/producto/[slug]` | Galería, variantes, cantidad validada contra stock, carrito, WhatsApp, favoritos, cuidados/empaque/entrega, relacionados |
 | `/carrito` | Cantidades, eliminar, dedicatoria, subtotal, «Envío por confirmar», vista previa del mensaje y **Pedir por WhatsApp** |
 | `/favoritos` | Joyas guardadas (persisten al recargar) |
-| `/nosotros` | Historia y valores (texto editable de demostración) |
+| `/nosotros` | Historia y valores de la marca |
 | `/contacto` | WhatsApp, Instagram, formulario demo con validación, preguntas frecuentes |
 | `/politicas` | Términos, privacidad, envíos, cambios, Libro de Reclamaciones — **provisional** |
 | `/admin` | Panel de administración (en modo demo sin Supabase): resumen, CRUD de productos y variantes, pedidos con cambio de estado, movimientos de stock, **Restablecer datos de demo** |
