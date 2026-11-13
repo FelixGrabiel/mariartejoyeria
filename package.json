@@ -2,7 +2,7 @@
   "name": "mariarte-prototipo",
   "version": "0.1.0",
   "private": true,
-  "description": "Prototipo web de demostración para MariArte | Joyería y Accesorios",
+  "description": "Tienda online de MariArte | Joyería y Accesorios",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

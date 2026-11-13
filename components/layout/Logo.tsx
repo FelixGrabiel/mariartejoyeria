@@ -1,10 +1,7 @@
 import Link from "next/link";
 import { cn } from "@/lib/format";
 
-/**
- * Logotipo provisional en texto. Reemplázalo por el logo auténtico de MariArte
- * (por ejemplo, <Image src="/images/logo-mariarte.svg" … />) cuando esté disponible.
- */
+/** Logotipo de MariArte en texto. Si la marca define un logo gráfico, cámbialo aquí (p. ej. con <Image src="/images/logo-mariarte.svg" … />). */
 export function Logo({ className, light = false }: { className?: string; light?: boolean }) {
   return (
     <Link href="/" className={cn("group inline-flex flex-col leading-none", className)}>

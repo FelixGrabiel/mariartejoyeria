@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/format";
 import { Heart, Info } from "./icons";
 
-/** Aviso que identifica contenido de demostración. */
+/** Aviso informativo con borde punteado. */
 export function DemoNotice({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <p
