@@ -14,6 +14,9 @@ export type Intent =
   | "comprar"
   | "regalo"
   | "horario"
+  | "tallas"
+  | "cuidados"
+  | "ofertas"
   | "precio"
   | "desconocido";
 
@@ -29,10 +32,13 @@ const normalize = (t: string) =>
 /** Cada intención con sus palabras (o inicios de palabra). El orden importa: la primera que coincide gana. */
 const RULES: { intent: Intent; words: string[] }[] = [
   { intent: "humano", words: ["persona", "asesor", "asesora", "humano", "hablar con", "llamar", "alguien", "atencion al cliente", "reclamo", "queja"] },
+  { intent: "ofertas", words: ["oferta", "ofertas", "cupon", "cupones", "descuento", "descuentos", "promocion", "promociones", "promo", "rebaja", "rebajas", "combo", "combos", "codigo de"] },
   { intent: "pedido", words: ["mi pedido", "pedido", "seguimiento", "rastrear", "codigo", "estado de", "ya salio", "donde esta"] },
   { intent: "envios", words: ["envio", "envian", "enviar", "delivery", "entrega", "entregan", "provincia", "demora", "tarda", "plazo", "recoger", "recojo"] },
   { intent: "pagos", words: ["pago", "pagar", "yape", "plin", "tarjeta", "transferencia", "deposito", "efectivo", "cobran", "cuotas"] },
   { intent: "cambios", words: ["cambio", "cambiar", "devolucion", "devolver", "garantia", "reembolso"] },
+  { intent: "tallas", words: ["talla", "tallas", "medida", "medidas", "muneca", "medir", "mido", "largo del collar", "largo de la cadena", "numero de anillo", "que talla"] },
+  { intent: "cuidados", words: ["cuidar", "cuidado", "cuidados", "limpiar", "limpieza", "se oscurece", "se pone negra", "se moja", "ducha", "duran", "durabilidad", "mantenimiento"] },
   { intent: "regalo", words: ["regalo", "regalar", "dedicatoria", "empaque", "tarjeta de", "sorpresa"] },
   { intent: "horario", words: ["horario", "atienden", "abierto", "abren", "cierran", "a que hora"] },
   { intent: "comprar", words: ["como compro", "como comprar", "como pido", "como hago un pedido", "quiero comprar", "quiero pedir", "como pedir", "como funciona"] },
@@ -89,6 +95,12 @@ export function staticAnswer(intent: Intent, f: BotFacts): string | null {
       return "Puedes armar un regalo con empaque y dedicatoria en la página «Arma tu regalo». Elige la joya, la ocasión, el empaque y escribe tu mensaje; lo agregamos al carrito.";
     case "horario":
       return "El horario de atención aún no está publicado en la web. Escríbenos por WhatsApp y te responden en cuanto puedan.";
+    case "tallas":
+      return "Te ayudo con las medidas: en la guía explicamos cómo medir tu muñeca, tu dedo y el largo del collar, con tablas de tallas. Si dudas entre dos tallas, escríbenos por WhatsApp con tu medida.";
+    case "cuidados":
+      return "Para que tus joyas duren: quítatelas para bañarte, nadar o dormir, y póntelas después del perfume y las cremas. En la guía hay consejos por material (plata, acero, hilo y cuentas).";
+    case "ofertas":
+      return "Mira los combos con ahorro cuando hay promociones activas. Si tienes un cupón de descuento, escribe el código en el carrito antes de pedir: verás el descuento al instante y la tienda lo confirma al registrar tu pedido.";
     case "precio":
       return "Los precios son referenciales y están en cada ficha. Dime el nombre de la joya y te muestro el precio y si hay stock.";
     case "humano":
@@ -98,11 +110,21 @@ export function staticAnswer(intent: Intent, f: BotFacts): string | null {
   }
 }
 
+/** Enlaces internos que acompañan algunas respuestas (se muestran como botones en el asistente). */
+export const INTENT_LINKS: Partial<Record<Intent, { label: string; href: string }[]>> = {
+  tallas: [{ label: "Ver guía de tallas", href: "/guias#pulseras" }],
+  cuidados: [{ label: "Ver guía de cuidados", href: "/guias#cuidados" }],
+  ofertas: [{ label: "Ver combos y ofertas", href: "/combos" }, { label: "Ir a mi carrito", href: "/carrito" }],
+};
+
 export const MENU: { id: string; label: string; text: string }[] = [
+  { id: "ofertas", label: "Ofertas y cupones", text: "¿Tienen ofertas o cupones?" },
   { id: "stock", label: "¿Hay stock de una joya?", text: "¿Hay stock?" },
   { id: "pedido", label: "Estado de mi pedido", text: "Quiero ver el estado de mi pedido" },
   { id: "envios", label: "Envíos y plazos", text: "¿Cómo son los envíos?" },
   { id: "pagos", label: "Formas de pago", text: "¿Cómo puedo pagar?" },
+  { id: "tallas", label: "Guía de tallas", text: "¿Qué talla me conviene?" },
+  { id: "cuidados", label: "Cuidado de mis joyas", text: "¿Cómo cuido mis joyas?" },
   { id: "comprar", label: "Cómo comprar", text: "¿Cómo compro?" },
   { id: "humano", label: "Hablar con una persona", text: "Quiero hablar con una persona" },
 ];

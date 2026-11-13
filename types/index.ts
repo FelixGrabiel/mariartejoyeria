@@ -174,6 +174,9 @@ export interface Order {
   shippingZone?: string;
   shippingCost?: number;
   shippingPending?: boolean;
+  /** Cupón aplicado al crear el pedido y descuento en soles. */
+  couponCode?: string;
+  discountAmount?: number;
 }
 
 /** Zona de envío con su tarifa. `price` null = el costo se confirma por WhatsApp. */

@@ -15,6 +15,18 @@ test("detecta las intenciones principales (con tildes, mayúsculas y signos)", (
   assert.equal(detectIntent("como compro"), "comprar");
 });
 
+test("detecta tallas, cuidados y ofertas/cupones", () => {
+  assert.equal(detectIntent("¿Qué talla de anillo me conviene?"), "tallas");
+  assert.equal(detectIntent("como mido mi muñeca"), "tallas");
+  assert.equal(detectIntent("¿Cómo puedo limpiar la plata?"), "cuidados");
+  assert.equal(detectIntent("se moja la pulsera?"), "cuidados");
+  assert.equal(detectIntent("¿Tienen ofertas o cupones?"), "ofertas");
+  assert.equal(detectIntent("tengo un código de descuento"), "ofertas");
+  assert.equal(detectIntent("quiero usar un cupón en mi pedido"), "ofertas");
+  assert.equal(detectIntent("quiero ver el estado de mi pedido"), "pedido");
+  for (const i of ["tallas", "cuidados", "ofertas"] as const) assert.ok(staticAnswer(i, { whatsappUrl: "x" }));
+});
+
 test("lo que no entiende queda como desconocido (y no inventa)", () => {
   assert.equal(detectIntent("qwerty asdf"), "desconocido");
   assert.equal(detectIntent("   "), "desconocido");

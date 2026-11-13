@@ -95,7 +95,12 @@ async function setupContext(browser, state, opts = {}) {
       state.complaints.push(JSON.parse(req.postData() || "{}"));
       return json(route, { number: "LR-000001-2026", created_at: "2026-11-02T10:00:00Z" });
     }
-    if (p === "rpc/place_order_v2") {
+    if (p === "rpc/preview_coupon") {
+      const body = JSON.parse(req.postData() || "{}");
+      if (String(body.p_code).toUpperCase() === "HOLA10") return json(route, { code: "HOLA10", discount: Math.round(body.p_subtotal * 10) / 100 });
+      return json(route, { code: "P0001", message: "El cupón no es válido" }, 400);
+    }
+    if (p === "rpc/place_order_v3") {
       const body = JSON.parse(req.postData() || "{}");
       state.payloads.push(body);
       if (state.mode === "slow") await new Promise((r) => setTimeout(r, 1200));
@@ -149,7 +154,7 @@ const opened = (page) => page.evaluate(() => window.__opened || []);
 const overflow = (page) => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 const price = (t, re) => { const m = t.match(re); return m ? m[1] : null; };
 
-const browser = await chromium.launch();
+const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH, args: ["--no-sandbox", "--no-proxy-server"] } : {});
 
 // =====================================================================
 // P1 · Visitante curioso (escritorio): explora, busca, filtra, favoritos
@@ -1125,6 +1130,53 @@ const browser = await chromium.launch();
     await go(page, "/politicas", 1500);
     expect(await page.locator("footer a[href='/reclamaciones']").count() === 1, "falta el enlace en el pie");
     expect(await page.locator("main a[href='/reclamaciones']").count() >= 1, "falta el enlace en políticas");
+  });
+  await ctx.close();
+}
+
+// =====================================================================
+// P16 · Clienta con cupón de descuento
+// =====================================================================
+{
+  const P = "P16 Clienta con cupón";
+  const state = newState();
+  const ctx = await setupContext(browser, state);
+  const page = await newPage(ctx, P);
+  await step(P, "un cupón inexistente muestra el error del servidor y no cambia el total", async () => {
+    await go(page, "/producto/pulsera-ojo-turco", 2000);
+    await page.getByRole("button", { name: /Agregar al carrito/ }).click();
+    await page.waitForTimeout(500);
+    await go(page, "/carrito", 1500);
+    await page.getByLabel("¿Tienes un cupón?").fill("NOEXISTE");
+    await page.getByRole("button", { name: "Aplicar" }).click();
+    await page.waitForTimeout(600);
+    const t = await main(page);
+    expect(/El cupón no es válido/.test(t), "no muestra el error del cupón");
+    expect(price(t, /Total referencial\s*\n?\s*(S\/\s*[\d.]+)/) === "S/ 65.00", "el total cambió");
+  });
+  await step(P, "un cupón válido (HOLA10) descuenta 10 % y baja el total a S/ 58.50", async () => {
+    await page.getByLabel("¿Tienes un cupón?").fill("hola10");
+    await page.getByRole("button", { name: "Aplicar" }).click();
+    await page.waitForTimeout(600);
+    const t = await main(page);
+    expect(/Cupón HOLA10/.test(t) && /- S\/ 6\.50/.test(t), "no muestra el descuento");
+    expect(price(t, /Total referencial\s*\n?\s*(S\/\s*[\d.]+)/) === "S/ 58.50", `total ${price(t, /Total referencial\s*\n?\s*(S\/\s*[\d.]+)/)}`);
+  });
+  await step(P, "el pedido lleva el cupón al servidor y el mensaje de WhatsApp lo menciona", async () => {
+    await page.getByLabel("Nombre").fill("Lucía Torres");
+    await page.getByLabel("Celular").fill("987654321");
+    await page.getByLabel("Distrito o ciudad").fill("Surco, Lima");
+    await page.getByText("Pedir por WhatsApp").first().click();
+    await page.waitForTimeout(900);
+    expect(state.payloads.length === 1 && state.payloads[0].p_coupon === "HOLA10", "el pedido no llevó el cupón: " + JSON.stringify(state.payloads[0] || {}).slice(0, 160));
+    const wa = (await opened(page)).find((u) => u.includes("wa.me"));
+    expect(wa, "no abrió WhatsApp");
+    expect(/Cupón HOLA10/.test(decodeURIComponent(wa.split("text=")[1] || "")), "el mensaje no menciona el cupón");
+  });
+  await step(P, "quitar el cupón devuelve el total original", async () => {
+    await page.getByRole("button", { name: "Quitar" }).click();
+    await page.waitForTimeout(400);
+    expect(price(await main(page), /Total referencial\s*\n?\s*(S\/\s*[\d.]+)/) === "S/ 65.00", "no restauró el total");
   });
   await ctx.close();
 }

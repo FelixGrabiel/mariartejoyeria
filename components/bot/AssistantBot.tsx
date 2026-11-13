@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useStore } from "@/context/StoreContext";
 import { categories } from "@/data/categories";
-import { availabilityLabel, availabilityOf, detectIntent, MENU, productQuery, staticAnswer } from "@/lib/bot";
+import { availabilityLabel, availabilityOf, detectIntent, INTENT_LINKS, MENU, productQuery, staticAnswer } from "@/lib/bot";
 import { emptyFilters, filterProducts } from "@/lib/catalog";
 import { normalizePhone } from "@/lib/customer";
 import { cn, formatDate, formatPrice } from "@/lib/format";
@@ -13,7 +13,7 @@ import { whatsappUrl } from "@/lib/whatsapp";
 import { MessageCircle, Sparkles, X } from "@/components/ui/icons";
 
 type Msg =
-  | { id: number; from: "bot" | "user"; kind: "text"; text: string }
+  | { id: number; from: "bot" | "user"; kind: "text"; text: string; links?: { label: string; href: string }[] }
   | { id: number; from: "bot"; kind: "products"; query: string; items: { id: string; slug: string; name: string; price: number; stocks: number[] }[] }
   | { id: number; from: "bot"; kind: "track-form" };
 
@@ -103,7 +103,7 @@ export function AssistantBot() {
     }
     const fixed = staticAnswer(intent, facts);
     if (fixed) {
-      push({ from: "bot", kind: "text", text: fixed });
+      push({ from: "bot", kind: "text", text: fixed, links: INTENT_LINKS[intent] });
       return;
     }
 
@@ -220,10 +220,19 @@ export function AssistantBot() {
 function Bubble({ m, onNavigate }: { m: Msg; onNavigate: () => void }) {
   if (m.kind === "text") {
     return (
-      <div className={cn("flex", m.from === "user" ? "justify-end" : "justify-start")}>
+      <div className={cn("flex flex-col gap-2", m.from === "user" ? "items-end" : "items-start")}>
         <p className={cn("max-w-[88%] whitespace-pre-wrap break-words rounded-2xl px-4 py-2.5 text-[14px] leading-snug", m.from === "user" ? "bg-rose-deep text-white" : "bg-blush-soft/70 text-ink")}>
           {linkify(m.text)}
         </p>
+        {m.links && (
+          <div className="flex max-w-[88%] flex-wrap gap-2">
+            {m.links.map((l) => (
+              <Link key={l.href} href={l.href} onClick={onNavigate} className="btn btn-secondary btn-sm">
+                {l.label}
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     );
   }

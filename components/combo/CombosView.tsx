@@ -17,6 +17,7 @@ export function CombosView() {
         <p className="mt-3 max-w-xl text-[15px] text-muted">
           Conjuntos de joyas para parejas, mejores amigas o madre e hija. El ahorro aparece solo cuando la tienda tiene una promoción activa.
         </p>
+        <p className="mt-2 max-w-xl text-[13.5px] text-muted">¿Tienes un cupón de descuento? Escribe tu código en el carrito antes de pedir.</p>
       </header>
 
       {!hydrated ? (
