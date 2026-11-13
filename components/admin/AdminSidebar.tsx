@@ -30,7 +30,7 @@ export function AdminSidebar({
         <p className="font-serif text-[1.9rem] font-medium leading-none text-ivory">
           Mari<span className="italic">Arte</span>
         </p>
-        <p className="mt-1 text-[9px] font-semibold uppercase tracking-[0.3em] text-blush">Panel · modo demo</p>
+        <p className="mt-1 text-[9px] font-semibold uppercase tracking-[0.3em] text-blush">Panel</p>
       </div>
 
       <nav aria-label="Secciones del panel" className="mt-10 flex-1">

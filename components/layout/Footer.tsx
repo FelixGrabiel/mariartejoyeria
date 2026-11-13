@@ -27,7 +27,7 @@ const columns = [
     ],
   },
   {
-    title: "Legal (provisional)",
+    title: "Legal",
     links: [
       { href: "/politicas#terminos", label: "Términos y condiciones" },
       { href: "/politicas#privacidad", label: "Política de privacidad" },
@@ -82,10 +82,7 @@ export function Footer() {
       </div>
       <div className="border-t border-ivory/10">
         <div className="container-page flex flex-col gap-2 py-5 text-[12px] text-ivory/55 sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} MariArte · Prototipo de demostración: precios, stock y reseñas son de ejemplo.</p>
-          <Link href="/admin-demo" className="underline-offset-4 hover:text-ivory hover:underline">
-            Panel administrativo (demo)
-          </Link>
+          <p>© {new Date().getFullYear()} MariArte · Joyería y Accesorios</p>
         </div>
       </div>
     </footer>

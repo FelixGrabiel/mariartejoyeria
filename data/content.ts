@@ -1,32 +1,12 @@
 import type { Faq, Testimonial } from "@/types";
 
 /**
- * TESTIMONIOS DE DEMOSTRACIÓN — no son reseñas reales.
- * Reemplázalos por reseñas reales con autorización de cada clienta/cliente,
- * o elimina la sección si aún no hay reseñas.
+ * Testimonios: agrega aquí solo reseñas reales, con nombre y autorización de la persona.
+ * Mientras la lista esté vacía, la sección no se muestra en la portada.
  */
-export const testimonials: Testimonial[] = [
-  {
-    id: "t-1",
-    name: "Testimonio de ejemplo",
-    text: "Aquí irá una reseña real sobre la pieza, el empaque o la atención recibida por WhatsApp.",
-    product: "Pulsera Ojo Protector",
-  },
-  {
-    id: "t-2",
-    name: "Testimonio de ejemplo",
-    text: "Espacio para una experiencia real de regalo: a quién se lo dieron y qué significó.",
-    product: "Dúo Lazo Familiar",
-  },
-  {
-    id: "t-3",
-    name: "Testimonio de ejemplo",
-    text: "Texto provisional. Usa reseñas cortas, con nombre y permiso de la persona.",
-    product: "Detalle de Regalo con Dedicatoria",
-  },
-];
+export const testimonials: Testimonial[] = [];
 
-/** PREGUNTAS FRECUENTES — contenido provisional para editar con la marca. */
+/** Preguntas frecuentes (se muestran en /contacto). */
 export const faqs: Faq[] = [
   {
     question: "¿Cómo hago un pedido?",
@@ -36,7 +16,7 @@ export const faqs: Faq[] = [
   {
     question: "¿Hacen envíos a provincias?",
     answer:
-      "La marca comunica envíos a todo el Perú. El costo, la empresa de envío y el plazo se coordinan por WhatsApp según tu ciudad. (Texto provisional por confirmar.)",
+      "La marca comunica envíos a todo el Perú. El costo, la empresa de envío y el plazo se coordinan por WhatsApp según tu ciudad.",
   },
   {
     question: "¿Qué medios de pago aceptan?",
@@ -56,6 +36,6 @@ export const faqs: Faq[] = [
   {
     question: "¿Puedo cambiar una pieza?",
     answer:
-      "La política de cambios está pendiente de definición por la marca. Consulta por WhatsApp antes de comprar. (Texto provisional.)",
+      "Los cambios se evalúan según el caso. Escríbenos por WhatsApp antes de comprar y te explicamos las condiciones.",
   },
 ];

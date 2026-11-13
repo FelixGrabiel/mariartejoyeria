@@ -2,6 +2,9 @@
  * Datos generales de la marca. Edita aquí el WhatsApp, Instagram y textos
  * globales: todos los componentes leen desde este archivo.
  */
+/** URL pública del sitio. Define NEXT_PUBLIC_SITE_URL en Vercel cuando tengas dominio propio. */
+export const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://mariartejoyeria.vercel.app").replace(/\/$/, "");
+
 export const site = {
   name: "MariArte",
   fullName: "MariArte | Joyería y Accesorios",
@@ -15,8 +18,6 @@ export const site = {
   topBarMessage: "Envíos a todo el Perú · costo y plazo se coordinan por WhatsApp",
   /** Materiales comunicados por la marca en general. */
   brandMaterials: "plata y acero quirúrgico",
-  demoNotice:
-    "Prototipo de demostración: productos, precios, stock y pedidos son ejemplos y no corresponden a la oferta oficial de MariArte.",
 } as const;
 
 export const navLinks = [

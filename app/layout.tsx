@@ -4,7 +4,8 @@ import type { ReactNode } from "react";
 import { SiteShell } from "@/components/layout/SiteShell";
 import { StoreProvider } from "@/context/StoreContext";
 import { ToastProvider } from "@/context/ToastContext";
-import { site } from "@/data/site";
+import { site, siteUrl } from "@/data/site";
+import { getCatalog } from "@/lib/server-catalog";
 import "./globals.css";
 
 const cormorant = Cormorant_Garamond({
@@ -21,7 +22,11 @@ const inter = Inter({
   display: "swap",
 });
 
+/** Regenera el catálogo desde Supabase como máximo cada 60 s; el navegador refresca el stock en vivo. */
+export const revalidate = 60;
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: {
     default: `${site.fullName} · ${site.tagline}`,
     template: `%s · ${site.name}`,
@@ -35,8 +40,11 @@ export const metadata: Metadata = {
     locale: "es_PE",
     type: "website",
     siteName: site.name,
+    url: "/",
+    images: [{ url: "/images/pulsera-duo.jpg", alt: "Pulseras de hilo rojo de MariArte" }],
   },
-  robots: { index: false, follow: false }, // Prototipo: no indexar hasta publicar la versión real.
+  twitter: { card: "summary_large_image", title: site.fullName, description: site.description, images: ["/images/pulsera-duo.jpg"] },
+  alternates: { canonical: "/" },
 };
 
 export const viewport: Viewport = {
@@ -45,12 +53,13 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const catalog = await getCatalog();
   return (
     <html lang="es-PE" className={`${cormorant.variable} ${inter.variable}`}>
       <body>
         <ToastProvider>
-          <StoreProvider>
+          <StoreProvider initialCatalog={catalog}>
             <SiteShell>{children}</SiteShell>
           </StoreProvider>
         </ToastProvider>

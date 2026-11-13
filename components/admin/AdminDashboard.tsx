@@ -57,7 +57,7 @@ export function AdminDashboard() {
         <div role="note" className="flex items-center justify-center gap-2 bg-warning-soft px-4 py-2 text-center text-[12.5px] font-medium text-warning">
           <Info size={15} className="shrink-0" />
           {authRequired
-            ? "Conectado a Supabase · los cambios se guardan en la base de datos · datos de ejemplo"
+            ? "Conectado a Supabase · los cambios se guardan en la base de datos"
             : "Modo demostración · no conectado a un backend · datos ficticios guardados solo en este navegador"}
         </div>
 
@@ -93,8 +93,8 @@ export function AdminDashboard() {
                 <div className="space-y-8">
                   <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     <StatCard label="Productos activos" value={active} hint={`${products.length - active} oculto(s)`} icon={<Package size={17} />} />
-                    <StatCard label="Pedidos de ejemplo" value={orders.length} hint={`${pending} pendiente(s) de atender`} icon={<ClipboardList size={17} />} />
-                    <StatCard label="Ventas simuladas" value={formatPrice(sales)} hint="Pedidos no cancelados · ficticio" icon={<Sparkles size={17} />} />
+                    <StatCard label="Pedidos" value={orders.length} hint={`${pending} pendiente(s) de atender`} icon={<ClipboardList size={17} />} />
+                    <StatCard label="Ventas" value={formatPrice(sales)} hint="Pedidos no cancelados" icon={<Sparkles size={17} />} />
                     <StatCard
                       label="Alertas de stock"
                       value={lowStock.length}

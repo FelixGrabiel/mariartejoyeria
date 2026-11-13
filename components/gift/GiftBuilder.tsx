@@ -12,7 +12,7 @@ import { QuantitySelector } from "@/components/product/QuantitySelector";
 import { VariantSelector } from "@/components/product/VariantSelector";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ArrowLeft, Check, Gift, ShoppingBag } from "@/components/ui/icons";
-import { DemoNotice, Skeleton } from "@/components/ui/misc";
+import { Skeleton } from "@/components/ui/misc";
 import { ProductImage } from "@/components/ui/ProductImage";
 
 const steps = ["Joya", "Ocasión", "Empaque", "Dedicatoria", "Resumen"] as const;
@@ -351,9 +351,9 @@ export function GiftBuilder() {
         </aside>
       </div>
 
-      <DemoNotice className="mt-10">
+      <p className="mt-10 text-center text-[13px] text-muted">
         Enviar el pedido por WhatsApp es una solicitud: la tienda confirma disponibilidad, precio final, pago y envío. Esta web no realiza cobros.
-      </DemoNotice>
+      </p>
     </div>
   );
 }

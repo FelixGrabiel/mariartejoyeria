@@ -1,6 +1,9 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
+
+const MAX_ATTEMPTS = 5;
+const LOCK_MS = 60_000;
 import { useStore } from "@/context/StoreContext";
 
 export function AdminLogin() {
@@ -9,13 +12,30 @@ export function AdminLogin() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const failures = useRef(0);
+  const lockedUntil = useRef(0);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
+    // Freno básico en el navegador; el límite real de intentos lo aplica Supabase Auth.
+    const wait = lockedUntil.current - Date.now();
+    if (wait > 0) {
+      setError(`Demasiados intentos. Espera ${Math.ceil(wait / 1000)} s e inténtalo de nuevo.`);
+      return;
+    }
     setBusy(true);
     setError(null);
     const message = await signIn(email.trim(), password);
-    if (message) setError(message);
+    if (message) {
+      failures.current += 1;
+      if (failures.current >= MAX_ATTEMPTS) {
+        failures.current = 0;
+        lockedUntil.current = Date.now() + LOCK_MS;
+      }
+      setError(message);
+    } else {
+      failures.current = 0;
+    }
     setBusy(false);
   }
 

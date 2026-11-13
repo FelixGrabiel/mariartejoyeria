@@ -13,7 +13,7 @@ import { buildProductMessage, whatsappUrl } from "@/lib/whatsapp";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState, SearchIllustration } from "@/components/ui/EmptyState";
 import { ChevronDown, ChevronRight, Gift, Heart, MessageCircle, Package, ShoppingBag, Truck } from "@/components/ui/icons";
-import { DemoNotice, SectionHeading, Skeleton } from "@/components/ui/misc";
+import { SectionHeading, Skeleton } from "@/components/ui/misc";
 import { ProductGallery } from "./ProductGallery";
 import { ProductGrid } from "./ProductGrid";
 import { QuantitySelector } from "./QuantitySelector";
@@ -132,13 +132,11 @@ export function ProductDetail({ slug }: { slug: string }) {
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone="blush">{category?.name}</Badge>
               {product.isNew && <Badge tone="champagne">Nuevo</Badge>}
-              <Badge tone="neutral">Producto de ejemplo</Badge>
             </div>
 
             <h1 className="mt-4 font-serif text-[2.4rem] font-semibold leading-[1.02] text-ink sm:text-[3.1rem]">{product.name}</h1>
             <p className="mt-3 text-2xl font-semibold text-ink">
               {formatPrice(product.price)}
-              <span className="ml-2 align-middle text-xs font-medium text-muted">precio referencial</span>
             </p>
 
             <p className="mt-5 max-w-prose text-[15px] leading-relaxed text-muted">{product.description}</p>
@@ -147,7 +145,7 @@ export function ProductDetail({ slug }: { slug: string }) {
               <dt className="font-semibold text-ink">Material</dt>
               <dd className="text-muted">{product.material}</dd>
               <dt className="font-semibold text-ink">SKU</dt>
-              <dd className="text-muted">{variant?.sku ?? "—"} <span className="text-muted/70">(ficticio)</span></dd>
+              <dd className="text-muted">{variant?.sku ?? "—"}</dd>
             </dl>
 
             <div className="mt-7 space-y-6 border-t border-line pt-7">
@@ -258,17 +256,16 @@ export function ProductDetail({ slug }: { slug: string }) {
                 )}
               </InfoAccordion>
               <InfoAccordion title="Entrega" icon={<Truck size={17} />}>
-                Texto de muestra: envíos a todo el Perú. El costo, la empresa de envío y el plazo se coordinan por WhatsApp según tu ciudad. No se garantizan tiempos hasta que la tienda los confirme.
+                Envíos a todo el Perú. El costo, la empresa de envío y el plazo se coordinan por WhatsApp según tu ciudad. No se garantizan tiempos hasta que la tienda los confirme.
               </InfoAccordion>
               <InfoAccordion title="Cambios" icon={<Package size={17} />}>
-                Texto de muestra pendiente de la política oficial de MariArte.{" "}
-                <Link href="/politicas#cambios" className="link-underline text-rose-deep">Ver información provisional</Link>.
+                Consulta las condiciones de cambios y devoluciones en nuestras{" "}
+                <Link href="/politicas#cambios" className="link-underline text-rose-deep">políticas</Link>.
               </InfoAccordion>
             </div>
           </div>
         </div>
 
-        <DemoNotice className="mt-10">{site.demoNotice}</DemoNotice>
       </div>
 
       {related.length > 0 && (

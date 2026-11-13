@@ -5,7 +5,6 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useStore } from "@/context/StoreContext";
 import { categories, getCategory } from "@/data/categories";
-import { site } from "@/data/site";
 import {
   emptyFilters,
   filterProducts,
@@ -20,7 +19,6 @@ import { ProductGrid } from "@/components/product/ProductGrid";
 import { EmptyState, SearchIllustration } from "@/components/ui/EmptyState";
 import { Modal } from "@/components/ui/Modal";
 import { ChevronRight, Sliders, X } from "@/components/ui/icons";
-import { DemoNotice } from "@/components/ui/misc";
 import { FilterPanel } from "./FilterPanel";
 import { SearchBar } from "./SearchBar";
 import { SortSelect } from "./SortSelect";
@@ -90,7 +88,6 @@ export function CatalogView() {
 
   const activeCount = activeChips.length;
   const singleCategory = filters.categories.length === 1 ? getCategory(filters.categories[0]) : undefined;
-  const sampleCategory = singleCategory && !singleCategory.image;
   const singleTheme = filters.themes.length === 1 ? activeThemes.find((t) => t.id === filters.themes[0]) : undefined;
 
   return (
@@ -113,7 +110,6 @@ export function CatalogView() {
             {singleTheme?.description || singleCategory?.description || "Piezas con significado para llevar, compartir y regalar."}
           </p>
         </div>
-        <DemoNotice className="max-w-md">Catálogo de ejemplo: nombres, precios y stock son simulados.</DemoNotice>
       </header>
 
       <div className="sticky top-[72px] z-30 -mx-4 mb-6 border-y border-line/70 bg-ivory/95 px-4 py-3 backdrop-blur sm:top-20 sm:mx-0 sm:rounded-full sm:border sm:px-3">
@@ -173,12 +169,6 @@ export function CatalogView() {
               </button>
             ))}
           </div>
-
-          {sampleCategory && (
-            <DemoNotice className="mb-6">
-              {singleCategory?.name} es una categoría de muestra: sus piezas aún no tienen fotos ni materiales confirmados por {site.name}.
-            </DemoNotice>
-          )}
 
           {!hydrated ? (
             <ProductGrid products={[]} loading columns={3} skeletonCount={6} />

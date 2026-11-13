@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { AlertCircle, Check } from "@/components/ui/icons";
+import { AlertCircle } from "@/components/ui/icons";
+import { whatsappUrl } from "@/lib/whatsapp";
 
 interface FormState {
   name: string;
@@ -29,7 +30,6 @@ function validate(values: FormState): Errors {
 export function ContactForm() {
   const [values, setValues] = useState<FormState>(initial);
   const [errors, setErrors] = useState<Errors>({});
-  const [sent, setSent] = useState(false);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setValues((v) => ({ ...v, [key]: value }));
@@ -41,35 +41,19 @@ export function ContactForm() {
     const result = validate(values);
     setErrors(result);
     if (Object.keys(result).length === 0) {
-      setSent(true);
+      const message = [
+        "Hola, MariArte. Les escribo desde la web.",
+        `Nombre: ${values.name.trim()}`,
+        `Contacto: ${values.contact.trim()}`,
+        `Motivo: ${values.topic}`,
+        "",
+        values.message.trim(),
+      ].join("\n");
+      window.open(whatsappUrl(message), "_blank", "noopener,noreferrer");
     } else {
       const firstKey = Object.keys(result)[0];
       document.getElementById(`contact-${firstKey}`)?.focus();
     }
-  }
-
-  if (sent) {
-    return (
-      <div role="status" className="card p-8 text-center">
-        <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-success-soft text-success">
-          <Check size={24} />
-        </span>
-        <h3 className="mt-5 font-serif text-[1.8rem] font-semibold">¡Gracias, {values.name.trim().split(" ")[0]}!</h3>
-        <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted">
-          Tu mensaje se validó correctamente, pero <strong className="text-ink">no se envió a MariArte</strong>: este formulario es de demostración. Para una respuesta real, escríbenos por WhatsApp.
-        </p>
-        <button
-          type="button"
-          className="btn btn-secondary mt-6"
-          onClick={() => {
-            setValues(initial);
-            setSent(false);
-          }}
-        >
-          Escribir otro mensaje
-        </button>
-      </div>
-    );
   }
 
   const fieldError = (key: keyof FormState) =>
@@ -80,7 +64,7 @@ export function ContactForm() {
     ) : null;
 
   return (
-    <form noValidate onSubmit={onSubmit} className="card space-y-5 p-6 sm:p-8" aria-describedby="contact-demo-note">
+    <form noValidate onSubmit={onSubmit} className="card space-y-5 p-6 sm:p-8">
       <div>
         <label htmlFor="contact-name" className="field-label">Nombre</label>
         <input
@@ -131,9 +115,9 @@ export function ContactForm() {
         />
         {fieldError("message")}
       </div>
-      <button type="submit" className="btn btn-primary w-full">Enviar mensaje (demo)</button>
-      <p id="contact-demo-note" className="text-center text-[12px] text-muted">
-        Formulario de demostración: valida los datos y confirma en pantalla, pero no envía ni guarda información.
+      <button type="submit" className="btn btn-primary w-full">Enviar por WhatsApp</button>
+      <p className="text-center text-[12px] text-muted">
+        Se abrirá WhatsApp con tu mensaje listo. Tú decides cuándo enviarlo.
       </p>
     </form>
   );

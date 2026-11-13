@@ -4,7 +4,7 @@ import { faqs } from "@/data/content";
 import { site } from "@/data/site";
 import { whatsappUrl } from "@/lib/whatsapp";
 import { ChevronDown, Instagram, MessageCircle } from "@/components/ui/icons";
-import { DemoNotice, Ornament } from "@/components/ui/misc";
+import { Ornament } from "@/components/ui/misc";
 
 export const metadata: Metadata = {
   title: "Contacto",
@@ -52,7 +52,6 @@ export default function ContactPage() {
               <span className="text-sm text-muted">Novedades, fotos y mensajes directos</span>
             </span>
           </a>
-          <DemoNotice>Horario de atención y tiempos de respuesta por confirmar con la marca.</DemoNotice>
         </div>
 
         <div className="min-w-0">
@@ -77,7 +76,6 @@ export default function ContactPage() {
             </details>
           ))}
         </div>
-        <p className="mt-4 text-center text-[12px] text-muted">Respuestas provisionales: edítalas en data/content.ts.</p>
       </section>
     </div>
   );

@@ -10,7 +10,7 @@ import { WhatsAppFloat } from "./WhatsAppFloat";
 /** Envuelve la tienda con barra superior, header y footer. El panel admin usa su propio layout. */
 export function SiteShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const isAdmin = pathname?.startsWith("/admin-demo");
+  const isAdmin = pathname?.startsWith("/admin");
 
   if (isAdmin) return <>{children}</>;
 

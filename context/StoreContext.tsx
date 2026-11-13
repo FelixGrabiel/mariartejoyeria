@@ -1,8 +1,9 @@
 "use client";
 
 /**
- * Estado central de la demo: catálogo (editable desde /admin-demo), carrito,
- * favoritos, pedidos y movimientos de stock. Todo vive en localStorage.
+ * Estado central de la tienda: catálogo, carrito, favoritos, pedidos y movimientos de stock.
+ * Con Supabase configurado el catálogo llega renderizado desde el servidor (`initialCatalog`)
+ * y se refresca en el navegador; sin Supabase funciona en modo demostración con localStorage.
  *
  * MIGRACIÓN A SUPABASE: sustituye la carga inicial (`initialProducts`, etc.)
  * por consultas a Supabase y las acciones de admin por Server Actions que
@@ -118,15 +119,16 @@ function movementId(): string {
   return `m-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
-export function StoreProvider({ children }: { children: ReactNode }) {
+export function StoreProvider({ children, initialCatalog }: { children: ReactNode; initialCatalog?: Product[] | null }) {
   const { showToast } = useToast();
   const [hydrated, setHydrated] = useState(false);
-  const [products, setProducts] = useState<Product[]>(initialProducts);
+  // Con Supabase nunca se muestran los datos de ejemplo: se parte del catálogo del servidor o de una lista vacía.
+  const [products, setProducts] = useState<Product[]>(initialCatalog ?? (supabase ? [] : initialProducts));
   const [cart, setCart] = useState<CartItem[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [giftNote, setGiftNote] = useState("");
-  const [orders, setOrders] = useState<Order[]>(initialOrders);
-  const [movements, setMovements] = useState<StockMovement[]>(initialMovements);
+  const [orders, setOrders] = useState<Order[]>(supabase ? [] : initialOrders);
+  const [movements, setMovements] = useState<StockMovement[]>(supabase ? [] : initialMovements);
   const [authChecked, setAuthChecked] = useState(!supabase);
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminEmail, setAdminEmail] = useState<string | null>(null);
@@ -147,19 +149,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   // Carga inicial desde localStorage (solo en el navegador).
   useEffect(() => {
-    setProducts(readStorage(STORAGE_KEYS.products, initialProducts));
     setCart(readStorage<CartItem[]>(STORAGE_KEYS.cart, []));
     setFavorites(readStorage<string[]>(STORAGE_KEYS.favorites, []));
     setGiftNote(readStorage(STORAGE_KEYS.giftNote, ""));
-    setOrders(readStorage(STORAGE_KEYS.orders, initialOrders));
-    setMovements(readStorage(STORAGE_KEYS.movements, initialMovements));
-    setHydrated(true);
-    // Si hay Supabase configurado, el catálogo (y su stock) viene de la base de datos.
+    if (!supabase) {
+      // Modo demostración: catálogo, pedidos y movimientos viven en el navegador.
+      setProducts(readStorage(STORAGE_KEYS.products, initialProducts));
+      setOrders(readStorage(STORAGE_KEYS.orders, initialOrders));
+      setMovements(readStorage(STORAGE_KEYS.movements, initialMovements));
+      setHydrated(true);
+      return;
+    }
+    // Con Supabase el stock se refresca siempre desde la base. Si el servidor ya entregó el catálogo
+    // se muestra de inmediato; si no, se espera la respuesta para no mostrar una tienda vacía.
+    if (initialCatalog) setHydrated(true);
     fetchCatalog().then((remote) => {
-      if (remote && remote.length) setProducts(remote);
+      if (remote) setProducts(remote);
+      setHydrated(true);
     });
     loadConfig();
-  }, [loadConfig]);
+  }, [loadConfig, initialCatalog]);
 
   // Sesión de administrador: al iniciar sesión se cargan productos (incluye ocultos), pedidos y movimientos de la base.
   const loadAdminData = useCallback(async () => {
@@ -214,8 +223,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setAdminEmail(null);
     const remote = await fetchCatalog();
     if (remote) setProducts(remote);
-    setOrders(initialOrders);
-    setMovements(initialMovements);
+    setOrders([]);
+    setMovements([]);
     loadConfig();
   }, [loadConfig]);
 
@@ -234,11 +243,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     function onStorage(event: StorageEvent) {
       if (!event.key) return;
-      if (event.key === STORAGE_KEYS.products) setProducts(readStorage(STORAGE_KEYS.products, initialProducts));
+      if (event.key === STORAGE_KEYS.products && !supabase) setProducts(readStorage(STORAGE_KEYS.products, initialProducts));
       if (event.key === STORAGE_KEYS.cart) setCart(readStorage<CartItem[]>(STORAGE_KEYS.cart, []));
       if (event.key === STORAGE_KEYS.favorites) setFavorites(readStorage<string[]>(STORAGE_KEYS.favorites, []));
-      if (event.key === STORAGE_KEYS.orders) setOrders(readStorage(STORAGE_KEYS.orders, initialOrders));
-      if (event.key === STORAGE_KEYS.movements) setMovements(readStorage(STORAGE_KEYS.movements, initialMovements));
+      if (event.key === STORAGE_KEYS.orders && !supabase) setOrders(readStorage(STORAGE_KEYS.orders, initialOrders));
+      if (event.key === STORAGE_KEYS.movements && !supabase) setMovements(readStorage(STORAGE_KEYS.movements, initialMovements));
     }
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);

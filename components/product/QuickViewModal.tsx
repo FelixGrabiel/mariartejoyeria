@@ -47,7 +47,7 @@ export function QuickViewModal({ product, open, onClose }: { product: Product; o
           <ProductImage src={product.images[0]} alt={product.name} sizes="(min-width: 640px) 320px, 90vw" />
         </div>
         <div className="flex flex-col">
-          <p className="eyebrow">Vista rápida · producto de ejemplo</p>
+          <p className="eyebrow">Vista rápida</p>
           <h3 className="mt-2 font-serif text-3xl font-semibold leading-tight">{product.name}</h3>
           <p className="mt-2 text-lg font-semibold">{formatPrice(product.price)}</p>
           <p className="mt-3 text-sm leading-relaxed text-muted">{product.description}</p>

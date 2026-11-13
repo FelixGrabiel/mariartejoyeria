@@ -21,7 +21,6 @@ export function StockStatus({ stock, className }: { stock: number; className?: s
         )}
       />
       {text}
-      <span className="font-normal text-muted">(stock de ejemplo)</span>
     </p>
   );
 }
